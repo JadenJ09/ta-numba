@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ta-numba"
+version = "0.1.0"
+authors = [{ name = "Beomgyu Joeng", email = "jaden.b.jeong@gmail.com" }]
+description = "A high-performance technical analysis library accelerated with Numba."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = ["numpy", "numba"]
+keywords = [
+    "technical-analysis",
+    "quantitative-analysis",
+    "financial-engineering",
+    "trading",
+    "indicators",
+    "numba",
+    "performance",
+]
+
+[project.urls]
+Homepage = "https://github.com/JadenJ09/ta-numba"
+Issues = "https://github.com/JadenJ09/ta-numba/issues"
+Repository = "https://github.com/JadenJ09/ta-numba"
+Documentation = "https://github.com/JadenJ09/ta-numba#readme"
+
+[project.optional-dependencies]
+dev = ["pytest", "pandas", "ta"]
