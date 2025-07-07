@@ -136,6 +136,133 @@ Below is a categorized list of all available indicators. Click to expand each se
 
 </details>
 
+## **Benchmarking and Performance**
+
+```
+
+                  Generating sample data of size 200000 with seed None...
+                  Sample data generated.
+
+                  --- Warming up Numba functions (JIT Compilation) ---
+                      Warm-up complete.
+
+                  --- Running Benchmarks (5 loops each) ---
+
+                      Discrepancy for TRIX:
+                      Mean Absolute Difference: 0.007569
+                      Zero Status: Normal
+
+                      First 5 differing values (Index, TA, Numba):
+                            43, -0.035422, -0.054566
+                            44, -0.021285, -0.035508
+                            45, 0.001522, -0.006502
+                            46, 0.002349, -0.005051
+                            47, 0.012865, 0.008175
+
+                      Discrepancy for MI:
+                      Mean Absolute Difference: 6.323e-06
+                      Zero Status: Normal
+
+                      First 5 differing values (Index, TA, Numba):
+                            40, 24.923410, 25.163110
+                            41, 25.099305, 25.298424
+                            42, 25.092817, 25.256278
+                            43, 25.031762, 25.163705
+                            44, 25.043005, 25.150111
+
+                      Discrepancy for STC:
+                      Mean Absolute Difference: 4.276e-06
+                      Zero Status: Normal
+
+                      First 5 differing values (Index, TA, Numba):
+                            71, 16.939844, 17.313568
+                            72, 8.469922, 8.656784
+                            73, 4.234961, 4.328392
+                            74, 15.217372, 15.289315
+                            75, 28.028082, 28.091572
+
+                      Discrepancy for TSI:
+                      Mean Absolute Difference: 0.0004937
+                      Zero Status: Normal
+
+                      First 5 differing values (Index, TA, Numba):
+                            37, 8.232642, 1.088498
+                            38, 7.628686, 0.899511
+                            39, 6.338255, -0.030883
+                            40, 6.326458, 0.355236
+                            41, 3.863873, -1.721345
+
+                  --- Benchmark Results (Average Time per Run) ---
+
+              -----------------------------------------------------------
+              Indicator  | `ta` Library    | Numba Version   | Speedup
+              -----------------------------------------------------------
+              MFI        | 1.187933s       | 0.005150s       | 230.65x
+              ADI        | 0.001475s       | 0.000434s       | 3.40x
+              OBV        | 0.001602s       | 0.000122s       | 13.08x
+              CMF        | 0.004253s       | 0.001713s       | 2.48x
+              FI         | 0.001479s       | 0.000609s       | 2.43x
+              EOM        | 0.001648s       | 0.000172s       | 9.58x
+              VPT        | 0.002104s       | 0.000451s       | 4.66x
+              NVI        | 3.244231s       | 0.001093s       | 2967.43x
+              VWAP       | 0.003858s       | 0.001392s       | 2.77x
+              VWEMA      | 0.005218s       | 0.002011s       | 2.60x
+              ATR        | 0.419494s       | 0.001130s       | 371.32x
+              BB         | 0.004472s       | 0.003196s       | 1.40x
+              KC         | 0.005683s       | 0.007647s       | 0.74x
+              DC         | 0.006115s       | 0.009956s       | 0.61x
+              UI         | 0.398492s       | 0.007430s       | 53.63x
+              SMA        | 0.001696s       | 0.002453s       | 0.69x
+              EMA        | 0.001192s       | 0.000444s       | 2.69x
+              WMA        | 5.459586s       | 0.006479s       | 842.68x
+              MACD       | 0.003275s       | 0.001290s       | 2.54x
+              ADX        | 0.883612s       | 0.007472s       | 118.25x
+              Vortex     | 0.016811s       | 0.007960s       | 2.11x
+              TRIX       | 0.004868s       | 0.001166s       | 4.18x
+              MI         | 0.003594s       | 0.008942s       | 0.40x
+              CCI        | 1.055140s       | 0.007558s       | 139.60x
+              DPO        | 0.001935s       | 0.002446s       | 0.79x
+              KST        | 0.011884s       | 0.031931s       | 0.37x
+              Ichimoku   | 0.013384s       | 0.027892s       | 0.48x
+              PSAR       | 9.464796s       | 0.001216s       | 7783.20x
+              STC        | 0.018517s       | 0.019506s       | 0.95x
+              Aroon      | 0.402076s       | 0.005702s       | 70.52x
+              RSI        | 0.004719s       | 0.002710s       | 1.74x
+              StochRSI   | 0.012424s       | 0.014490s       | 0.86x
+              TSI        | 0.004547s       | 0.001771s       | 2.57x
+              UO         | 0.034889s       | 0.014549s       | 2.40x
+              Stoch      | 0.006982s       | 0.011224s       | 0.62x
+              WR         | 0.006880s       | 0.009031s       | 0.76x
+              AO         | 0.003143s       | 0.004481s       | 0.70x
+              KAMA       | 0.130242s       | 0.001560s       | 83.47x
+              ROC        | 0.000777s       | 0.000344s       | 2.26x
+              PPO        | 0.003494s       | 0.001294s       | 2.70x
+              PVO        | 0.003904s       | 0.001216s       | 3.21x
+              DR         | 0.000662s       | 0.000300s       | 2.21x
+              DLR        | 0.000803s       | 0.001611s       | 0.50x
+              CR         | 0.000388s       | 0.000184s       | 2.11x
+              CLR        | 11.993333s      | 1.936194s       | 6.19x
+              -----------------------------------------------------------
+
+                    --- Zero Value Status for All Indicators ---
+
+                     Normal (non-zero values): 44 indicators
+                   MFI, ADI, OBV, CMF, FI, EOM, VPT, NVI, VWAP, VWEMA,
+                   ATR, BB, KC, DC, UI, ... and 29 more
+
+                   All 44 indicators have normal non-zero values!
+
+                            --- Discrepancy Report ---
+
+                 Indicator     Status            MAD     Zero Status
+                      TRIX  Different       0.007569          Normal
+                        MI  Different   6.323000e-06          Normal
+                       STC  Different   4.276000e-06          Normal
+                       TSI  Different   4.937000e-04          Normal
+              -----------------------------------------------------------
+
+```
+
 ## **Acknowledgements**
 
 This library's API design and calculation logic are based on the excellent work of the original [Technical Analysis Library (ta)](https://github.com/bukosabino/ta) by Darío López Padial. ta-numba aims to provide a performance-focused alternative while respecting the established and well-regarded API of the original project.
