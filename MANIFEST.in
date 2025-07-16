@@ -1,29 +1,14 @@
-# Include essential files
 include README.md
 include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
 include ta-numba.pdf
-include pyproject.toml
-include Makefile
-
-# Include source code
 recursive-include src/ta_numba *.py
-
-# Include tests
 recursive-include tests *.py
-
-# Exclude unwanted files
-recursive-exclude * __pycache__
-recursive-exclude * *.py[co]
-recursive-exclude * .DS_Store
-recursive-exclude * .git*
-recursive-exclude * *.egg-info
-recursive-exclude * build
-recursive-exclude * dist
-recursive-exclude * .pytest_cache
-recursive-exclude * .tox
-recursive-exclude * .coverage
-recursive-exclude * .mypy_cache
-recursive-exclude * debug
-recursive-exclude * archive
-exclude setup_project.sh
-exclude update_api.py
+exclude debug/*
+exclude archive/*
+exclude scripts/*
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .DS_Store

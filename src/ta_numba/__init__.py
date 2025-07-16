@@ -3,27 +3,77 @@
 """
 ta-numba
 A high-performance technical analysis library for financial data, accelerated with Numba.
-This library provides a Numba-accelerated, 1-to-1 compatible replacement for 
-many of the indicators in the popular 'ta' library.
+
+Features:
+- Bulk processing: High-performance batch calculations with JIT compilation
+- Streaming: Real-time O(1) indicators for live trading
+- 1-to-1 compatibility with the popular 'ta' library
+- Dramatic speed improvements (100x to 8000x+ on iterative indicators)
+
+Usage:
+    # Bulk processing (batch calculations)
+    import ta_numba.bulk as ta_bulk
+    sma_values = ta_bulk.trend.sma(prices, window=20)
+
+    # Streaming (real-time updates)
+    import ta_numba.stream as ta_stream
+    sma = ta_stream.SMA(window=20)
+    current_sma = sma.update(new_price)
+
+    # JIT warmup for faster startup
+    import ta_numba.warmup
+    ta_numba.warmup.warmup_all()
 """
 
-# Import the modules to create the package structure
-from . import volume
-from . import volatility
-from . import trend
-from . import momentum
-from . import others
+# Import warmup functionality
+# Import streaming module
+# Import bulk processing modules (renamed for clarity)
+from . import momentum as _momentum_bulk
+from . import others as _others_bulk
+from . import streaming as _streaming
+from . import trend as _trend_bulk
+from . import volatility as _volatility_bulk
+from . import volume as _volume_bulk
+from . import warmup
 
-# You can also import specific functions to the top-level namespace if desired
-# For example, to allow `from ta_numba import sma_numba` instead of `from ta_numba.trend import sma_numba`
+
+# Create convenient namespace aliases
+class BulkNamespace:
+    """Namespace for bulk processing indicators"""
+
+    volume = _volume_bulk
+    volatility = _volatility_bulk
+    trend = _trend_bulk
+    momentum = _momentum_bulk
+    others = _others_bulk
 
 
-__version__ = "0.1.0"
+# Create bulk processing namespace
+bulk = BulkNamespace()
+
+# Create streaming namespace alias
+stream = _streaming
+
+
+__version__ = "0.2.0"
 
 __all__ = [
-    'volume',
-    'volatility',
-    'trend',
-    'momentum',
-    'others',
+    "bulk",  # Bulk processing namespace
+    "stream",  # Streaming indicators namespace
+    "warmup",  # JIT warmup functions
+    # Legacy compatibility (deprecated in future versions)
+    "volume",
+    "volatility",
+    "trend",
+    "momentum",
+    "others",
+    "streaming",
 ]
+
+# Legacy compatibility - will be deprecated in future versions
+volume = _volume_bulk
+volatility = _volatility_bulk
+trend = _trend_bulk
+momentum = _momentum_bulk
+others = _others_bulk
+streaming = _streaming

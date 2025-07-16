@@ -1,0 +1,171 @@
+name: Build and Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v
+
+      - name: Test import and basic functionality
+        run: |
+          python -c "
+          import ta_numba.bulk as bulk
+          import ta_numba.stream as stream
+          import numpy as np
+
+          # Test bulk
+          prices = np.array([1, 2, 3, 4, 5])
+          sma = bulk.trend.sma(prices, window=3)
+          print('Bulk SMA test passed')
+
+          # Test streaming
+          sma_stream = stream.SMA(window=3)
+          for price in prices:
+              result = sma_stream.update(price)
+          print('Streaming SMA test passed')
+
+          # Test warmup
+          import ta_numba.warmup
+          print('Warmup import test passed')
+          "
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ta-numba v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 🚀 ta-numba v${{ steps.version.outputs.VERSION }}
+
+            ### What's New
+            See [CHANGELOG.md](https://github.com/JadenJ09/ta-numba/blob/main/CHANGELOG.md) for detailed changes.
+
+            ### Installation
+            ```bash
+            pip install ta-numba==${{ steps.version.outputs.VERSION }}
+            ```
+
+            ### Quick Start
+            ```python
+            # Bulk processing
+            import ta_numba.bulk as bulk
+            sma_values = bulk.trend.sma(prices, window=20)
+
+            # Streaming (new in v0.2.0)
+            import ta_numba.stream as stream
+            sma = stream.SMA(window=20)
+            current_sma = sma.update(new_price)
+            ```
+
+            ### Performance
+            - 100x to 8000x+ speedups over traditional libraries
+            - O(1) real-time streaming indicators
+            - JIT warmup for production deployment
+
+            ---
+
+            📊 **Mathematical Documentation**: [ta-numba.pdf](https://github.com/JadenJ09/ta-numba/blob/main/ta-numba.pdf)
+
+            🤝 **Contributing**: [CONTRIBUTING.md](https://github.com/JadenJ09/ta-numba/blob/main/CONTRIBUTING.md)
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/
+          asset_name: ta-numba-${{ steps.version.outputs.VERSION }}-dist.zip
+          asset_content_type: application/zip
