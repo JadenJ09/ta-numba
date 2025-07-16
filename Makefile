@@ -1,72 +1,71 @@
-# Makefile for ta-numba project management
+# Makefile for ta-numba development
 
-# Use python3 from the environment
-PYTHON=python3
-PIP=pip3
+.PHONY: help install test lint format clean build upload-test upload docs
 
-# Default target
-.PHONY: help
 help:
-	@echo "Makefile for ta-numba"
-	@echo ""
-	@echo "Usage:"
-	@echo "  make install    - Install dependencies for development"
-	@echo "  make build      - Build the wheel and sdist packages"
-	@echo "  make test       - Run the test suite (requires pytest)"
-	@echo "  make clean      - Remove build artifacts and caches"
-	@echo "  make publish    - Publish to PyPI (requires twine)"
-	@echo "  make test-publish - Publish to TestPyPI (requires twine)"
-	@echo ""
+	@echo "Available commands:"
+	@echo "  install     Install development dependencies"
+	@echo "  test        Run all tests"
+	@echo "  lint        Run linting checks"
+	@echo "  format      Format code with black and isort"
+	@echo "  clean       Clean up build artifacts"
+	@echo "  build       Build distribution packages"
+	@echo "  upload-test Upload to test PyPI"
+	@echo "  upload      Upload to PyPI"
+	@echo "  benchmark   Run performance benchmarks"
 
-# Install the package in editable mode with development dependencies
-.PHONY: install
 install:
-	@echo "--- Installing dependencies in editable mode ---"
-	$(PIP) install --upgrade pip
-	$(PIP) install -e .[dev]
-	@echo "Done."
+	pip install -e .[dev]
+	pre-commit install
 
-# Build the sdist and wheel packages
-.PHONY: build
-build:
-	@echo "--- Building package (sdist and wheel) ---"
-	$(PYTHON) -m build
-	@echo "Build complete. Artifacts are in the 'dist/' directory."
-
-# Run tests using pytest
-.PHONY: test
 test:
-	@echo "--- Running tests with pytest ---"
-	$(PYTHON) -m pytest tests/
-	@echo "Tests complete."
+	python -m pytest tests/ -v
 
-# Clean up build artifacts and caches
-.PHONY: clean
+test-unit:
+	python -m pytest tests/unit/ -v
+
+test-integration:
+	python -m pytest tests/integration/ -v
+
+test-performance:
+	python -m pytest tests/performance/ -v
+
+lint:
+	flake8 src/ tests/
+	mypy src/ --ignore-missing-imports
+
+format:
+	black src/ tests/ scripts/
+	isort src/ tests/ scripts/
+
 clean:
-	@echo "--- Cleaning up build artifacts ---"
-	rm -rf build dist src/ta_numba.egg-info .pytest_cache
-	find . -type f -name '*.pyc' -delete
-	find . -type d -name '__pycache__' -delete
-	@echo "Clean complete."
+	rm -rf build/
+	rm -rf dist/
+	rm -rf *.egg-info/
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
 
-# Publish to PyPI
-.PHONY: publish
-publish: clean build
-	@echo "--- Publishing to PyPI ---"
-	$(PYTHON) -m twine upload dist/*
-	@echo "Published to PyPI."
+build: clean
+	python -m build
 
-# Publish to TestPyPI for testing
-.PHONY: test-publish
-test-publish: clean build
-	@echo "--- Publishing to TestPyPI ---"
-	$(PYTHON) -m twine upload --repository testpypi dist/*
-	@echo "Published to TestPyPI."
+upload-test: build
+	python -m twine upload --repository testpypi dist/*
 
-# Install build and publish tools
-.PHONY: install-tools
-install-tools:
-	@echo "--- Installing build and publish tools ---"
-	$(PIP) install --upgrade pip build twine
-	@echo "Tools installed."
+upload: build
+	python -m twine upload dist/*
 
+benchmark:
+	python tests/performance/test_comprehensive_comparison.py
+
+organize:
+	python scripts/organize_project.py
+
+prepare-release:
+	python scripts/prepare_release.py --version $(VERSION)
+
+# Development shortcuts
+dev-setup:
+	python scripts/setup_dev.py
+
+warmup:
+	python -c "import ta_numba.warmup; ta_numba.warmup.warmup_all()"

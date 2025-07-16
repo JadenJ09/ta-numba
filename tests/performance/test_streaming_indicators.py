@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 import numpy as np
 import pytest
 
-from ta_numba.momentum import rsi, stoch, willr
+from ta_numba.momentum import rsi, stoch, williams_r
 
 # Import streaming indicators
 from ta_numba.streaming import (
