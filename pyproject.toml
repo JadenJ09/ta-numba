@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ta-numba"
-version = "0.2.1"
+version = "0.2.2"
 authors = [{ name = "Beomgyu Joeng", email = "jaden.b.jeong@gmail.com" }]
 description = "A high-performance technical analysis library with JIT compilation and streaming capabilities for real-time trading."
 readme = "README.md"
