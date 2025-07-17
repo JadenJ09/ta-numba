@@ -5,7 +5,9 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-
+permissions:
+  contents: write
+  packages: write
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -51,7 +53,7 @@ jobs:
           # Test warmup
           import ta_numba.warmup
           print('Warmup import test passed')
-          
+
           print('All basic functionality tests passed!')
           "
 
