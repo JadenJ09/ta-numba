@@ -34,17 +34,16 @@ jobs:
       - name: Test import and basic functionality
         run: |
           python -c "
-          import ta_numba.bulk as bulk
-          import ta_numba.stream as stream
+          import ta_numba
           import numpy as np
 
-          # Test bulk
+          # Test bulk processing
           prices = np.array([1, 2, 3, 4, 5])
-          sma = bulk.trend.sma(prices, window=3)
+          sma = ta_numba.bulk.trend.sma_numba(prices, window=3)
           print('Bulk SMA test passed')
 
           # Test streaming
-          sma_stream = stream.SMA(window=3)
+          sma_stream = ta_numba.stream.SMA(window=3)
           for price in prices:
               result = sma_stream.update(price)
           print('Streaming SMA test passed')
@@ -52,6 +51,8 @@ jobs:
           # Test warmup
           import ta_numba.warmup
           print('Warmup import test passed')
+          
+          print('All basic functionality tests passed!')
           "
 
   build:
