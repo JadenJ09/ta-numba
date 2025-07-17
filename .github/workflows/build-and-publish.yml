@@ -120,54 +120,41 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ta-numba v${{ steps.version.outputs.VERSION }}
-          body: |
-            ## 🚀 ta-numba v${{ steps.version.outputs.VERSION }}
+        run: |
+          gh release create v${{ steps.version.outputs.VERSION }} \
+            dist/* \
+            --title "ta-numba v${{ steps.version.outputs.VERSION }}" \
+            --notes "## 🚀 ta-numba v${{ steps.version.outputs.VERSION }}
 
-            ### What's New
-            See [CHANGELOG.md](https://github.com/JadenJ09/ta-numba/blob/main/CHANGELOG.md) for detailed changes.
+          ### What's New
+          See [CHANGELOG.md](https://github.com/JadenJ09/ta-numba/blob/main/CHANGELOG.md) for detailed changes.
 
-            ### Installation
-            ```bash
-            pip install ta-numba==${{ steps.version.outputs.VERSION }}
-            ```
+          ### Installation
+          \`\`\`bash
+          pip install ta-numba==${{ steps.version.outputs.VERSION }}
+          \`\`\`
 
-            ### Quick Start
-            ```python
-            # Bulk processing
-            import ta_numba.bulk as bulk
-            sma_values = bulk.trend.sma(prices, window=20)
+          ### Quick Start
+          \`\`\`python
+          # Bulk processing
+          import ta_numba.bulk as bulk
+          sma_values = bulk.trend.sma(prices, window=20)
 
-            # Streaming (new in v0.2.0)
-            import ta_numba.stream as stream
-            sma = stream.SMA(window=20)
-            current_sma = sma.update(new_price)
-            ```
+          # Streaming (new in v0.2.0)
+          import ta_numba.stream as stream
+          sma = stream.SMA(window=20)
+          current_sma = sma.update(new_price)
+          \`\`\`
 
-            ### Performance
-            - 100x to 8000x+ speedups over traditional libraries
-            - O(1) real-time streaming indicators
-            - JIT warmup for production deployment
+          ### Performance
+          - 100x to 8000x+ speedups over traditional libraries
+          - O(1) real-time streaming indicators
+          - JIT warmup for production deployment
 
-            ---
+          ---
 
-            📊 **Mathematical Documentation**: [ta-numba.pdf](https://github.com/JadenJ09/ta-numba/blob/main/ta-numba.pdf)
+          📊 **Mathematical Documentation**: [ta-numba.pdf](https://github.com/JadenJ09/ta-numba/blob/main/ta-numba.pdf)
 
-            🤝 **Contributing**: [CONTRIBUTING.md](https://github.com/JadenJ09/ta-numba/blob/main/CONTRIBUTING.md)
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/
-          asset_name: ta-numba-${{ steps.version.outputs.VERSION }}-dist.zip
-          asset_content_type: application/zip
+          🤝 **Contributing**: [CONTRIBUTING.md](https://github.com/JadenJ09/ta-numba/blob/main/CONTRIBUTING.md)"
