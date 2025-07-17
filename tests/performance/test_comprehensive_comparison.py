@@ -23,6 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import QuantLib as ql
+import pytest
 
 # Core libraries
 import ta
@@ -31,6 +32,7 @@ try:
     HAS_TALIB = True
 except ImportError:
     HAS_TALIB = False
+    pytest.skip("ta-lib not available", allow_module_level=True)
 
 from ta_numba.helpers import _ema_numba_unadjusted, _sma_numba
 from ta_numba.momentum import (
