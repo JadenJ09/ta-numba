@@ -26,7 +26,11 @@ import QuantLib as ql
 
 # Core libraries
 import ta
-import talib
+try:
+    import talib
+    HAS_TALIB = True
+except ImportError:
+    HAS_TALIB = False
 
 from ta_numba.helpers import _ema_numba_unadjusted, _sma_numba
 from ta_numba.momentum import (
@@ -419,6 +423,8 @@ class TalibWrappers:
     @staticmethod
     def safe_talib_call(func: Callable, *args, **kwargs) -> Optional[np.ndarray]:
         """Safely call ta-lib function and handle errors"""
+        if not HAS_TALIB:
+            return None
         try:
             return func(*args, **kwargs)
         except Exception as e:
@@ -435,6 +441,8 @@ class TalibWrappers:
         n_ema: int = 20,
     ) -> Optional[np.ndarray]:
         """Highly optimized Volume Weighted Exponential Moving Average using vectorized operations"""
+        if not HAS_TALIB:
+            return None
         try:
             n = len(close)
             if n < n_vwma:
