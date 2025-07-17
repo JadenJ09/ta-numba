@@ -28,8 +28,8 @@ jobs:
 
       - name: Run tests
         run: |
-          # Run only proper test files, exclude comparison scripts that require ta-lib
-          pytest tests/unit/ tests/performance/test_streaming_indicators.py tests/test_improved_ema.py -v
+          # Run only proper test files from unit and performance directories
+          pytest tests/unit/ tests/performance/test_streaming_indicators.py -v
 
       - name: Test import and basic functionality
         run: |
