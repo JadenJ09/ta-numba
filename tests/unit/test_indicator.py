@@ -193,7 +193,7 @@ def test_eom(ohlcv_data):
         ohlcv_data["High"].values,
         ohlcv_data["Low"].values,
         ohlcv_data["Volume"].values,
-        window=14,
+        14,
     )
     assert_series_equal(expected, pd.Series(actual, index=ohlcv_data.index))
 
@@ -318,7 +318,7 @@ def test_ui(ohlcv_data):
 
 def test_sma(ohlcv_data):
     expected = ta.trend.SMAIndicator(ohlcv_data["Close"], window=20).sma_indicator()
-    actual = tnt.sma_numba(ohlcv_data["Close"].values, window=20)
+    actual = tnt.sma_numba(ohlcv_data["Close"].values, 20)
     assert_series_equal(expected, pd.Series(actual, index=ohlcv_data.index))
 
 
