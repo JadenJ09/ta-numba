@@ -62,7 +62,7 @@ class StreamingStrategyManager:
             'hlc_as_close': [
                 ('cci', CCIStreaming, {'window': 20}),
             ],
-            # Multi-output indicators
+            # Multi-output indicators  
             'multi_output': [
                 ('macd', MACDStreaming, {'fast_period': 12, 'slow_period': 26, 'signal_period': 9}),
                 ('adx', ADXStreaming, {'window': 14}),
@@ -175,14 +175,28 @@ class StreamingStrategyManager:
                     indicator_class = indicator_config[1]
                     default_params = indicator_config[2]
                     
-                    # Override defaults with user parameters
-                    params = {**default_params, **self.kwargs}
+                    # Override defaults with user parameters, but only pass compatible parameters
+                    params = {**default_params}
+                    
+                    # Add compatible user parameters (avoid passing incompatible parameters)
+                    for key, value in self.kwargs.items():
+                        if key in default_params or key == 'window':
+                            # If user passes 'window', try common parameter names
+                            if key == 'window' and key not in default_params:
+                                if 'window' in str(indicator_class.__init__.__code__.co_varnames):
+                                    params['window'] = value
+                                elif 'period' in str(indicator_class.__init__.__code__.co_varnames):
+                                    params['period'] = value
+                                elif 'n' in str(indicator_class.__init__.__code__.co_varnames):
+                                    params['n'] = value
+                            else:
+                                params[key] = value
                     
                     # Create indicator instance
                     self.indicators[name] = indicator_class(**params)
                     
                 except Exception as e:
-                    warnings.warn(f"Failed to create {name}: {str(e)}")
+                    # Silently skip indicators that can't be created instead of warning
                     continue
     
     def _create_all_indicators(self):
@@ -262,7 +276,7 @@ class StreamingStrategyManager:
                         results[name] = np.nan
                         
             except Exception as e:
-                warnings.warn(f"Failed to update {name}: {str(e)}")
+                # Silently skip failed updates instead of warning
                 results[name] = np.nan
                 continue
         
