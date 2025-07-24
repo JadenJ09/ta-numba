@@ -90,7 +90,7 @@ def force_index_numba(close: np.ndarray, volume: np.ndarray, n: int = 13) -> np.
     return _ema_numba_unadjusted(fi1, n)
 
 @njit(fastmath=True)
-def ease_of_movement_numba(high, low, volume, window=14):
+def ease_of_movement_numba(high, low, volume, n=14):
     """EOM to match `ta` library exactly: distance moved * box height / volume."""
     n = len(high)
     emv_raw = np.full(n, np.nan)

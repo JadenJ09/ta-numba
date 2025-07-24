@@ -2,21 +2,21 @@
 
 import numpy as np
 from numba import njit
+from numpy.lib.stride_tricks import as_strided
 
 # Import helper functions from the same package
 from .helpers import (
-    _sma_numba,
     _ema_numba_adjusted,
     _ema_numba_unadjusted,
+    _sma_numba,
+    _true_range_numba,
     _wilders_ema_adaptive,
-    _true_range_numba
 )
 
 # ==============================================================================
 # Trend Indicator Functions
 # ==============================================================================
 
-from numpy.lib.stride_tricks import as_strided
 
 def sma_numba_vectorized(data: np.ndarray, n: int = 20) -> np.ndarray:
     # Create a new array with overlapping windows in each row
@@ -34,7 +34,7 @@ def sma_numba_vectorized(data: np.ndarray, n: int = 20) -> np.ndarray:
     return result
 
 @njit(fastmath=True)
-def sma_numba(data: np.ndarray, window: int = 20, min_periods: int = 1) -> np.ndarray:
+def sma_numba(data: np.ndarray, n: int = 20, min_periods: int = 1) -> np.ndarray:
     """
     Calculates the Simple Moving Average (SMA).
     This is a wrapper for the helper function.
@@ -42,8 +42,8 @@ def sma_numba(data: np.ndarray, window: int = 20, min_periods: int = 1) -> np.nd
     """
     sma = np.full_like(data, np.nan)
     for i in range(len(data)):
-        # Use expanding window until we have window periods, then use rolling window
-        start_idx = max(0, i - window + 1)
+        # Use expanding window until we have n periods, then use rolling window
+        start_idx = max(0, i - n + 1)
         window_size = i - start_idx + 1
         if window_size >= min_periods:
             sma[i] = np.mean(data[start_idx:i+1])
@@ -120,10 +120,10 @@ def vortex_indicator_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray,
     vm_plus[1:] = np.abs(high[1:] - low[:-1])
     vm_minus[1:] = np.abs(low[1:] - high[:-1])
     
-    sum_tr = _sma_numba(tr, window=n) * n
-    sum_vm_plus = _sma_numba(vm_plus, window=n) * n
-    sum_vm_minus = _sma_numba(vm_minus, window=n) * n
-    
+    sum_tr = _sma_numba(tr, n) * n
+    sum_vm_plus = _sma_numba(vm_plus, n) * n
+    sum_vm_minus = _sma_numba(vm_minus, n) * n
+
     vi_plus = sum_vm_plus / sum_tr
     vi_minus = sum_vm_minus / sum_tr
     return vi_plus, vi_minus
@@ -176,7 +176,7 @@ def dpo_numba(close: np.ndarray, n: int = 20) -> np.ndarray:
     """DPO: Detrended Price Oscillator to match ta library exactly."""
     dpo_val = np.full_like(close, np.nan)
     displacement = n // 2 + 1
-    sma = _sma_numba(close, window=n)
+    sma = _sma_numba(close, n)
     
     # DPO[i] = Close[i - displacement] - SMA[i]
     # Output at index i (not i - displacement)

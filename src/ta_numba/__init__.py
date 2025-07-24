@@ -30,7 +30,9 @@ Usage:
 # Import bulk processing modules (renamed for clarity)
 from . import momentum as _momentum_bulk
 from . import others as _others_bulk
+from . import strategy as _strategy
 from . import streaming as _streaming
+from . import streaming_strategy as _streaming_strategy
 from . import trend as _trend_bulk
 from . import volatility as _volatility_bulk
 from . import volume as _volume_bulk
@@ -46,16 +48,41 @@ class BulkNamespace:
     trend = _trend_bulk
     momentum = _momentum_bulk
     others = _others_bulk
+    
+    # Add strategy function to bulk namespace as static method
+    @staticmethod
+    def strategy(strategy_name, high=None, low=None, close=None, volume=None, **kwargs):
+        """Calculate multiple indicators using a strategy."""
+        return _strategy.strategy(strategy_name, high, low, close, volume, **kwargs)
+
+
+class StreamingNamespace:
+    """Enhanced namespace for streaming indicators with strategy support"""
+    
+    def __init__(self, streaming_module):
+        # Copy all attributes from the streaming module
+        for attr_name in dir(streaming_module):
+            if not attr_name.startswith('_'):
+                setattr(self, attr_name, getattr(streaming_module, attr_name))
+    
+    # Add streaming strategy functionality as static methods
+    @staticmethod 
+    def create_strategy(strategy_name, **kwargs):
+        """Create a streaming strategy manager."""
+        return _streaming_strategy.create_streaming_strategy(strategy_name, **kwargs)
+    
+    # Make Strategy class directly accessible
+    Strategy = _streaming_strategy.StreamingStrategyManager
 
 
 # Create bulk processing namespace
 bulk = BulkNamespace()
 
-# Create streaming namespace alias
-stream = _streaming
+# Create enhanced streaming namespace
+stream = StreamingNamespace(_streaming)
 
 
-__version__ = "0.2.0"
+__version__ = "0.2.3"
 
 __all__ = [
     "bulk",  # Bulk processing namespace

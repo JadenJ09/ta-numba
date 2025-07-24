@@ -4,7 +4,7 @@ import numpy as np
 from numba import njit
 
 # Import helper functions from the same package
-from .helpers import _true_range_numba, _wilders_ema_adaptive, _sma_numba
+from .helpers import _sma_numba, _true_range_numba, _wilders_ema_adaptive
 
 # ==============================================================================
 # Volatility Indicator Functions
@@ -45,15 +45,15 @@ def keltner_channel_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray, 
     typical_price = (high + low + close) / 3.0
     
     # Middle line: SMA of typical price with min_periods=window (NaN until window reached)
-    middle_line = _sma_numba(typical_price, window=n_ema, min_periods=n_ema)
+    middle_line = _sma_numba(typical_price, n=n_ema, min_periods=n_ema)
     
     # High band: SMA of (4*H - 2*L + C)/3 with min_periods=0
     high_tp = (4.0 * high - 2.0 * low + close) / 3.0
-    high_band = _sma_numba(high_tp, window=n_ema, min_periods=0)
+    high_band = _sma_numba(high_tp, n=n_ema, min_periods=0)
     
     # Low band: SMA of (-2*H + 4*L + C)/3 with min_periods=0  
     low_tp = (-2.0 * high + 4.0 * low + close) / 3.0
-    low_band = _sma_numba(low_tp, window=n_ema, min_periods=0)
+    low_band = _sma_numba(low_tp, n=n_ema, min_periods=0)
     
     return high_band, middle_line, low_band
 

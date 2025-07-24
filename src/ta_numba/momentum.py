@@ -5,12 +5,12 @@ from numba import njit
 
 # Import helper functions from the same package
 from .helpers import (
-    _sma,
-    _sma_numba,
     _ema_numba_adjusted,
     _ema_numba_unadjusted,
+    _ewm_numba,
+    _sma,
+    _sma_numba,
     _true_range_numba,
-    _ewm_numba
 )
 
 # ==============================================================================
@@ -94,12 +94,12 @@ def true_strength_index_numba(close: np.ndarray, r: int = 25, s: int = 13) -> np
 def ultimate_oscillator_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray, n1=7, n2=14, n3=28) -> np.ndarray:
     bp = np.zeros_like(close); bp[1:] = close[1:] - np.minimum(low[1:], close[:-1])
     tr = _true_range_numba(high, low, close)
-    sum_bp1 = _sma_numba(bp, window=n1) * n1
-    sum_tr1 = _sma_numba(tr, window=n1) * n1
-    sum_bp2 = _sma_numba(bp, window=n2) * n2
-    sum_tr2 = _sma_numba(tr, window=n2) * n2
-    sum_bp3 = _sma_numba(bp, window=n3) * n3
-    sum_tr3 = _sma_numba(tr, window=n3) * n3
+    sum_bp1 = _sma_numba(bp, n=n1) * n1
+    sum_tr1 = _sma_numba(tr, n=n1) * n1
+    sum_bp2 = _sma_numba(bp, n=n2) * n2
+    sum_tr2 = _sma_numba(tr, n=n2) * n2
+    sum_bp3 = _sma_numba(bp, n=n3) * n3
+    sum_tr3 = _sma_numba(tr, n=n3) * n3
     avg1, avg2, avg3 = sum_bp1 / sum_tr1, sum_bp2 / sum_tr2, sum_bp3 / sum_tr3
     uo = 100 * ((4 * avg1) + (2 * avg2) + (1 * avg3)) / 7.0
     return uo
@@ -113,7 +113,7 @@ def stochastic_oscillator_numba(high: np.ndarray, low: np.ndarray, close: np.nda
             percent_k[i] = 100 * (close[i] - window_low) / (window_high - window_low)
         else:
             percent_k[i] = 0.0
-    return percent_k, _sma_numba(percent_k, window=d)
+    return percent_k, _sma_numba(percent_k, n=d)
 
 @njit(fastmath=True)
 def williams_r_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray, n: int = 14) -> np.ndarray:
@@ -129,7 +129,7 @@ def williams_r_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray, n: in
 @njit(fastmath=True)
 def awesome_oscillator_numba(high: np.ndarray, low: np.ndarray, n1: int = 5, n2: int = 34) -> np.ndarray:
     midpoint = (high + low) / 2.0
-    return _sma_numba(midpoint, window=n1) - _sma_numba(midpoint, window=n2)
+    return _sma_numba(midpoint, n=n1) - _sma_numba(midpoint, n=n2)
 
 @njit(fastmath=True)
 def kaufmans_adaptive_moving_average_numba(close: np.ndarray, n: int = 10, n_fast: int = 2, n_slow: int = 30) -> np.ndarray:

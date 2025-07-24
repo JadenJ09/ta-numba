@@ -11,34 +11,34 @@ from numba import njit
 # ==============================================================================
 
 @njit
-def _sma(arr, window):
+def _sma(arr, n):
     """Helper function for calculating Simple Moving Average."""
     out = np.full_like(arr, np.nan, dtype=np.float64)
-    for i in range(window - 1, len(arr)):
-        window_slice = arr[i-window+1:i+1]
+    for i in range(n - 1, len(arr)):
+        window_slice = arr[i-n+1:i+1]
         if not np.any(np.isnan(window_slice)):
             out[i] = np.mean(window_slice)
     return out
 
 @njit
-def _sma_numba(data: np.ndarray, window: int = 20, min_periods: int = 1) -> np.ndarray:
+def _sma_numba(data: np.ndarray, n: int = 20, min_periods: int = 1) -> np.ndarray:
     """Numba-compatible SMA calculation with configurable min_periods behavior."""
     sma = np.full_like(data, np.nan)
     for i in range(len(data)):
         # Use expanding window until we have window periods, then use rolling window
-        start_idx = max(0, i - window + 1)
+        start_idx = max(0, i - n + 1)
         window_size = i - start_idx + 1
         if window_size >= min_periods:
             sma[i] = np.mean(data[start_idx:i+1])
     return sma
 
 @njit
-def _ema(arr, window, adjust=False):
+def _ema(arr, n, adjust=False):
     """
     Helper function for calculating Exponential Moving Average.
     Can replicate both pandas `adjust=True` and `adjust=False`.
     """
-    alpha = 2.0 / (window + 1.0)
+    alpha = 2.0 / (n + 1.0)
     
     if adjust:
         out = np.full_like(arr, np.nan, dtype=np.float64)
@@ -258,13 +258,13 @@ def _wilders_ema_adaptive(data: np.ndarray, n: int) -> np.ndarray:
         return _wilders_ema_numba_adjusted(data, n)
 
 @njit
-def _rma(arr, window):
+def _rma(arr, n):
     """
     Helper function for calculating Wilder's Smoothing (RMA).
     This is equivalent to an EMA with alpha = 1 / window.
     """
     out = np.full_like(arr, np.nan, dtype=np.float64)
-    alpha = 1.0 / window
+    alpha = 1.0 / n
     
     first_valid_idx = -1
     for i in range(len(arr)):
@@ -274,17 +274,17 @@ def _rma(arr, window):
     
     if first_valid_idx == -1: return out
     
-    start_idx = first_valid_idx + window
+    start_idx = first_valid_idx + n
     if start_idx > len(arr): return out
 
-    first_rma = np.mean(arr[first_valid_idx : first_valid_idx + window])
+    first_rma = np.mean(arr[first_valid_idx : first_valid_idx + n])
     out[start_idx - 1] = first_rma
 
     for i in range(start_idx, len(arr)):
         prev_val = out[i-1]
         curr_val = arr[i]
         if np.isnan(prev_val):
-            out[i] = np.mean(arr[i-window+1:i+1])
+            out[i] = np.mean(arr[i-n+1:i+1])
         elif np.isnan(curr_val):
              out[i] = prev_val
         else:
@@ -292,13 +292,13 @@ def _rma(arr, window):
     return out
 
 @njit
-def _wma(arr, window):
+def _wma(arr, n):
     """Helper function for calculating Weighted Moving Average."""
     out = np.full_like(arr, np.nan, dtype=np.float64)
-    weights = np.arange(1, window + 1, dtype=np.float64)
+    weights = np.arange(1, n + 1, dtype=np.float64)
     weight_sum = np.sum(weights)
-    for i in range(window - 1, len(arr)):
-        window_slice = arr[i-window+1:i+1]
+    for i in range(n - 1, len(arr)):
+        window_slice = arr[i-n+1:i+1]
         if not np.any(np.isnan(window_slice)):
             out[i] = np.sum(weights * window_slice) / weight_sum
     return out

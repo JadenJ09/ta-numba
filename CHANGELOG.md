@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-07-24
+
+### Added
+
+#### 🎯 Strategy Functions (Major Feature)
+
+- **Bulk Strategy API**: Calculate multiple indicators at once similar to pandas-ta
+  - `bulk.strategy("all", high, low, close, volume)` - All 68+ indicators
+  - `bulk.strategy("momentum", close=close)` - 17 momentum indicators
+  - `bulk.strategy("trend", high, low, close)` - 26 trend indicators  
+  - `bulk.strategy("volatility", high, low, close)` - 11 volatility indicators
+  - `bulk.strategy("volume", high, low, close, volume)` - 10 volume indicators
+  - `bulk.strategy("others", close=close)` - 4 return indicators
+
+- **Streaming Strategy API**: Real-time multiple indicator management
+  - `stream.create_strategy("all")` - Manage all streaming indicators
+  - `stream.create_strategy("momentum")` - Focus on momentum indicators
+  - State management with `get_ready_status()`, `reset_all()`, `get_current_values()`
+  - O(1) updates for all indicators simultaneously
+
+#### 🔧 Enhanced Features
+
+- **Flexible Input Handling**: Automatically handles different input requirements (close-only, HLC, HLCV)
+- **Custom Parameters**: Override default parameters easily across all indicators
+- **Error Handling**: Graceful handling of missing data or failed calculations
+- **Comprehensive Testing**: Full test suite for both bulk and streaming strategies
+
+#### 📚 Documentation & Examples
+
+- Complete usage examples in `examples/strategy_usage_examples.py`
+- Comprehensive test coverage in `tests/unit/test_strategy.py`
+- Performance comparisons and real-time trading simulation examples
+
+### Technical Details
+
+- **Performance**: Leverages existing Numba-optimized functions for maximum speed
+- **Architecture**: Clean separation between bulk and streaming modes
+- **API Design**: Intuitive pandas-ta-like interface with ta-numba performance
+- **Memory Efficiency**: Streaming strategies maintain constant memory usage
+
 ## [0.2.2] - 2025-07-17
 
 ### Added

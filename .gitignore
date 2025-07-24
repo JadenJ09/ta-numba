@@ -91,3 +91,8 @@ debug/output_*
 
 # Archive
 archive/
+staged-recipes/
+.claude/
+.vscode/
+.*
+CLAUDE.md
