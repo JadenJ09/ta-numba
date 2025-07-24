@@ -4,6 +4,7 @@ Tests for strategy functionality (bulk and streaming).
 
 import numpy as np
 import pytest
+
 import ta_numba
 
 
@@ -186,8 +187,8 @@ class TestStreamingStrategy:
     
     def test_get_current_values(self):
         """Test getting current values without updating."""
-        strategy_manager = ta_numba.stream.create_strategy("trend", window=10)
-        
+        strategy_manager = ta_numba.stream.create_strategy("trend", n=10)
+
         # Update with some data
         for price in self.prices[:15]:
             strategy_manager.update(close=price)
@@ -199,7 +200,7 @@ class TestStreamingStrategy:
     
     def test_ready_status(self):
         """Test getting ready status of indicators."""
-        strategy_manager = ta_numba.stream.create_strategy("momentum", window=5)
+        strategy_manager = ta_numba.stream.create_strategy("momentum", n=5)
         
         # Initially, indicators should not be ready
         ready_status = strategy_manager.get_ready_status()
@@ -215,7 +216,7 @@ class TestStreamingStrategy:
     
     def test_reset_all(self):
         """Test resetting all indicators."""
-        strategy_manager = ta_numba.stream.create_strategy("trend", window=5)
+        strategy_manager = ta_numba.stream.create_strategy("trend", n=5)
         
         # Update with data
         for price in self.prices[:10]:
@@ -235,7 +236,7 @@ class TestStreamingStrategy:
     def test_custom_parameters(self):
         """Test custom parameters in streaming strategy."""
         # Create strategy with custom window
-        strategy_manager = ta_numba.stream.create_strategy("momentum", window=21)
+        strategy_manager = ta_numba.stream.create_strategy("momentum", n=21)
         
         # Should create indicators with custom window
         rsi_indicator = strategy_manager.get_indicator('rsi')
@@ -288,7 +289,7 @@ class TestStrategyIntegration:
         bulk_results = ta_numba.bulk.strategy("momentum", close=self.close, n=14)
         
         # Get streaming results
-        strategy_manager = ta_numba.stream.create_strategy("momentum", window=14)
+        strategy_manager = ta_numba.stream.create_strategy("momentum", n=14)
         streaming_results = []
         
         for price in self.close:

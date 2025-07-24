@@ -49,28 +49,6 @@ def sma_numba(data: np.ndarray, n: int = 20, min_periods: int = 1) -> np.ndarray
             sma[i] = np.mean(data[start_idx:i+1])
     return sma
 
-# User-friendly wrapper function
-def sma(data, window=20, min_periods=1):
-    """
-    Simple Moving Average with user-friendly parameter names.
-    
-    Parameters
-    ----------
-    data : array-like
-        Input data
-    window : int, default 20
-        Size of the moving window
-    min_periods : int, default 1
-        Minimum number of observations required to produce a result
-        
-    Returns
-    -------
-    np.ndarray
-        Simple Moving Average values
-    """
-    from .helpers import _sma_numba
-    return _sma_numba(data, window, min_periods)
-
 # Clean public API aliases
 sma_indicator = sma_numba
 
