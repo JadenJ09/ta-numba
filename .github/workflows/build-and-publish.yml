@@ -41,7 +41,7 @@ jobs:
 
           # Test bulk processing
           prices = np.array([1, 2, 3, 4, 5])
-          sma = ta_numba.bulk.trend.sma_numba(prices, window=3)
+          sma = ta_numba.bulk.trend.sma_numba(prices, n=3)
           print('Bulk SMA test passed')
 
           # Test streaming
@@ -140,7 +140,7 @@ jobs:
           \`\`\`python
           # Bulk processing
           import ta_numba.bulk as bulk
-          sma_values = bulk.trend.sma(prices, window=20)
+          sma_values = bulk.trend.sma(prices, n=20)
 
           # Streaming (new in v0.2.0)
           import ta_numba.stream as stream
