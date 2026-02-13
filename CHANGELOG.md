@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-12
+
+### Added
+- **Rust/PyO3 streaming backend**: Accelerates 45 streaming indicator classes with transparent Numba fallback
+- `ta_numba.get_backend()` function to check active backend ("rust" or "numba")
+- `ta_numba.is_rust_available()` function to check Rust extension availability
+- `TA_NUMBA_DISABLE_RUST=1` environment variable to force Numba backend
+- Pre-built wheels for Linux (x86_64, aarch64), macOS (arm64, x86_64), and Windows (x64)
+- maturin-based build system for mixed Python/Rust packages
+
+### Performance
+- **Streaming indicators**: 2.6x average speedup over Numba (up to 13.3x for complex indicators)
+  - Best: UlcerIndex 13.3x, StochasticRSI 9.2x, AwesomeOscillator 8.1x, BollingerBands 7.2x
+  - Rust excels on indicators with state machines, rolling windows, multi-stage computations
+- **Bulk indicators**: Numba JIT remains optimal for vectorized array operations
+  - At production batch sizes (100K+ points), Numba's direct NumPy memory access outperforms Rust/PyO3 FFI
+- Zero API changes — Rust backend is a transparent drop-in
+
+### Changed
+- Build system switched from setuptools to maturin (backwards-compatible for pure-Python installs)
+- Numba JIT remains the automatic fallback on platforms without pre-built wheels
+- Streaming `__init__.py` conditionally imports Rust wrapper classes when extension is available
+
 ## [0.2.3] - 2025-07-24
 
 ### Added

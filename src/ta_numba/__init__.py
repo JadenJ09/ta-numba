@@ -82,7 +82,7 @@ bulk = BulkNamespace()
 stream = StreamingNamespace(_streaming)
 
 
-__version__ = "0.2.3"
+__version__ = "0.3.0"
 
 __all__ = [
     "bulk",  # Bulk processing namespace
@@ -104,3 +104,7 @@ trend = _trend_bulk
 momentum = _momentum_bulk
 others = _others_bulk
 streaming = _streaming
+
+
+# --- Rust backend detection ---
+from ._backend import get_backend, is_rust_available

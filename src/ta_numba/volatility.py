@@ -91,3 +91,6 @@ bollinger_bands = bollinger_bands_numba
 keltner_channel = keltner_channel_numba
 donchian_channel = donchian_channel_numba
 ulcer_index = ulcer_index_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---

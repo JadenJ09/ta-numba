@@ -441,3 +441,6 @@ ichimoku = ichimoku_numba
 parabolic_sar = parabolic_sar_numba
 schaff_trend_cycle = schaff_trend_cycle_numba
 aroon = aroon_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---

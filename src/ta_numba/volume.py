@@ -217,3 +217,6 @@ volume_price_trend = volume_price_trend_numba
 negative_volume_index = negative_volume_index_numba
 volume_weighted_average_price = volume_weighted_average_price_numba
 volume_weighted_exponential_moving_average = volume_weighted_exponential_moving_average_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---

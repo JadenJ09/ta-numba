@@ -96,3 +96,7 @@ staged-recipes/
 .vscode/
 .*
 CLAUDE.md
+
+# Rust
+target/
+Cargo.lock

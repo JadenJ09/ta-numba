@@ -47,3 +47,6 @@ daily_return = daily_return_numba
 daily_log_return = daily_log_return_numba
 cumulative_return = cumulative_return_numba
 compound_log_return = compound_log_return_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---

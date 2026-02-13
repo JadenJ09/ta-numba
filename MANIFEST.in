@@ -3,12 +3,19 @@ include LICENSE
 include CHANGELOG.md
 include CONTRIBUTING.md
 include ta-numba.pdf
+include Cargo.toml
+include rust-toolchain.toml
+
 recursive-include src/ta_numba *.py
+recursive-include rust *.rs
 recursive-include tests *.py
+
 exclude debug/*
 exclude archive/*
 exclude scripts/*
+
 global-exclude *.pyc
 global-exclude *.pyo
 global-exclude __pycache__
 global-exclude .DS_Store
+global-exclude *.so

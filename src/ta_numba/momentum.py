@@ -188,3 +188,6 @@ kama = kaufmans_adaptive_moving_average_numba
 roc = rate_of_change_numba
 ppo = percentage_price_oscillator_numba
 pvo = percentage_volume_oscillator_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---
