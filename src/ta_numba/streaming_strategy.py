@@ -180,17 +180,14 @@ class StreamingStrategyManager:
                     
                     # Add compatible user parameters (avoid passing incompatible parameters)
                     for key, value in self.kwargs.items():
-                        if key in default_params or key == 'window':
-                            # If user passes 'window', try common parameter names
-                            if key == 'window' and key not in default_params:
-                                if 'window' in str(indicator_class.__init__.__code__.co_varnames):
-                                    params['window'] = value
-                                elif 'period' in str(indicator_class.__init__.__code__.co_varnames):
-                                    params['period'] = value
-                                elif 'n' in str(indicator_class.__init__.__code__.co_varnames):
-                                    params['n'] = value
-                            else:
-                                params[key] = value
+                        if key in default_params:
+                            params[key] = value
+                        elif key in ('window', 'n'):
+                            # Translate 'n' or 'window' to the indicator's window parameter
+                            if 'window' in default_params:
+                                params['window'] = value
+                            elif 'window' in str(indicator_class.__init__.__code__.co_varnames):
+                                params['window'] = value
                     
                     # Create indicator instance
                     self.indicators[name] = indicator_class(**params)

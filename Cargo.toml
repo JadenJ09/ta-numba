@@ -1,0 +1,15 @@
+[package]
+name = "ta-numba"
+version = "0.3.0"
+edition = "2021"
+description = "High-performance technical analysis library with Rust acceleration"
+license = "MIT"
+
+[lib]
+name = "_ta_numba_rs"
+crate-type = ["cdylib"]
+path = "rust/src/lib.rs"
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module"] }
+numpy = "0.23"

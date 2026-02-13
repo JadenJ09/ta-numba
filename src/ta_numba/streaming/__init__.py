@@ -195,3 +195,102 @@ __all__ = [
     "MaxDrawdownStreaming",
     "CalmarRatioStreaming",
 ]
+
+
+# --- Rust backend dispatch (transparent acceleration) ---
+# Override Numba streaming classes with Rust-backed wrappers when available.
+# Python-only classes (no Rust equivalent) are NOT overridden:
+#   CompoundLogReturnStreaming, VolatilityStreaming, StandardDeviationStreaming,
+#   VarianceStreaming, RangeStreaming (TrueRange), HistoricalVolatilityStreaming
+from .._backend import _RUST_AVAILABLE
+if _RUST_AVAILABLE:
+    from ._rust_streaming import (
+        # Trend (11)
+        SMAStreaming,
+        EMAStreaming,
+        WMAStreaming,
+        MACDStreaming,
+        ADXStreaming,
+        CCIStreaming,
+        DPOStreaming,
+        VortexIndicatorStreaming,
+        TRIXStreaming,
+        AroonStreaming,
+        ParabolicSARStreaming,
+        # Momentum (11)
+        RSIStreaming,
+        StochasticStreaming,
+        WilliamsRStreaming,
+        ROCStreaming,
+        PPOStreaming,
+        UltimateOscillatorStreaming,
+        StochasticRSIStreaming,
+        TSIStreaming,
+        AwesomeOscillatorStreaming,
+        KAMAStreaming,
+        MomentumStreaming,
+        # Volatility (5)
+        ATRStreaming,
+        BBandsStreaming,
+        KeltnerChannelStreaming,
+        DonchianChannelStreaming,
+        UlcerIndexStreaming,
+        # Volume (10)
+        MoneyFlowIndexStreaming,
+        AccDistIndexStreaming,
+        OnBalanceVolumeStreaming,
+        ChaikinMoneyFlowStreaming,
+        ForceIndexStreaming,
+        EaseOfMovementStreaming,
+        VolumePriceTrendStreaming,
+        NegativeVolumeIndexStreaming,
+        VWAPStreaming,
+        VWEMAStreaming,
+        # Others (7)
+        DailyReturnStreaming,
+        DailyLogReturnStreaming,
+        CumulativeReturnStreaming,
+        RollingReturnStreaming,
+        MaxDrawdownStreaming,
+        SharpeRatioStreaming,
+        CalmarRatioStreaming,
+    )
+    # Update convenience aliases to point to Rust-backed wrappers
+    SMA = SMAStreaming
+    EMA = EMAStreaming
+    WMA = WMAStreaming
+    MACD = MACDStreaming
+    ADX = ADXStreaming
+    CCI = CCIStreaming
+    DPO = DPOStreaming
+    VortexIndicator = VortexIndicatorStreaming
+    TRIX = TRIXStreaming
+    Aroon = AroonStreaming
+    ParabolicSAR = ParabolicSARStreaming
+    RSI = RSIStreaming
+    Stochastic = StochasticStreaming
+    WilliamsR = WilliamsRStreaming
+    ROC = ROCStreaming
+    PPO = PPOStreaming
+    UltimateOscillator = UltimateOscillatorStreaming
+    StochasticRSI = StochasticRSIStreaming
+    TSI = TSIStreaming
+    AwesomeOscillator = AwesomeOscillatorStreaming
+    KAMA = KAMAStreaming
+    Momentum = MomentumStreaming
+    ATR = ATRStreaming
+    BollingerBands = BBandsStreaming
+    BBands = BBandsStreaming
+    DonchianChannel = DonchianChannelStreaming
+    KeltnerChannel = KeltnerChannelStreaming
+    UlcerIndex = UlcerIndexStreaming
+    MoneyFlowIndex = MoneyFlowIndexStreaming
+    AccDistIndex = AccDistIndexStreaming
+    OnBalanceVolume = OnBalanceVolumeStreaming
+    ChaikinMoneyFlow = ChaikinMoneyFlowStreaming
+    ForceIndex = ForceIndexStreaming
+    EaseOfMovement = EaseOfMovementStreaming
+    VolumePriceTrend = VolumePriceTrendStreaming
+    NegativeVolumeIndex = NegativeVolumeIndexStreaming
+    VWAP = VWAPStreaming
+    VWEMA = VWEMAStreaming

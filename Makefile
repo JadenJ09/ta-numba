@@ -69,3 +69,29 @@ dev-setup:
 
 warmup:
 	python -c "import ta_numba.warmup; ta_numba.warmup.warmup_all()"
+
+# Rust backend targets
+rust-build:
+	maturin develop --release
+
+rust-build-debug:
+	maturin develop
+
+rust-check:
+	cargo check
+
+rust-test:
+	cargo check --tests
+
+rust-bench:
+	python -m pytest tests/performance/ -v --tb=short
+
+rust-clean:
+	cargo clean
+
+# Full build (Rust + Python)
+build-all: rust-build install
+
+# Check which backend is active
+check-backend:
+	python -c "import ta_numba; print(f'Backend: {ta_numba.get_backend()}')"

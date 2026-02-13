@@ -76,6 +76,50 @@ pip install ta-numba
 
 Dependencies: `numpy`, `numba` (automatically installed)
 
+
+## Rust Backend (v0.3.0+)
+
+Starting with v0.3.0, ta-numba includes an optional Rust backend powered by PyO3 that provides additional speedups:
+
+- **Bulk indicators**: ~2.3x faster than Numba
+- **Streaming indicators**: ~20x faster than Numba
+
+### How It Works
+
+On supported platforms (Linux x86_64/aarch64, macOS arm64/x86_64, Windows x64), `pip install ta-numba` automatically installs pre-built Rust extensions. No Rust toolchain needed.
+
+On other platforms, ta-numba falls back to the Numba JIT backend transparently.
+
+### Check Your Backend
+
+```python
+import ta_numba
+print(ta_numba.get_backend())  # "rust" or "numba"
+```
+
+### Building from Source
+
+To build with the Rust backend from source:
+
+```bash
+# Requires Rust toolchain (rustup.rs)
+pip install maturin
+maturin develop --release
+```
+
+### API Compatibility
+
+The Rust backend is 100% API-compatible. No code changes needed — the same imports work regardless of backend:
+
+```python
+import ta_numba.bulk as bulk
+import ta_numba.stream as stream
+
+# These automatically use Rust when available
+sma = bulk.trend.sma_numba(prices, n=20)
+rsi_stream = stream.RSI(window=14)
+```
+
 ## **🚀 Quick Start**
 
 ### **Bulk Processing (Batch Calculations)**

@@ -184,7 +184,7 @@ class IndicatorStrategy:
                     output_names = indicator_config[3] if len(indicator_config) > 3 else [name]
                     
                     # Override defaults with user parameters
-                    params = {**default_params, **kwargs}
+                    params = {**default_params, **{k: v for k, v in kwargs.items() if k in default_params}}
                     
                     # Get the function
                     func = getattr(module, func_name)
@@ -217,7 +217,7 @@ class IndicatorStrategy:
                     elif input_type == 'volume_only':
                         if volume is None:
                             continue
-                        result = func(volume, **params)
+                        result = func(np.asarray(volume, dtype=np.float64), **params)
                     elif input_type == 'multi_output':
                         # Handle indicators with multiple outputs
                         if name in ['macd', 'kst', 'ppo', 'pvo']:
@@ -225,7 +225,7 @@ class IndicatorStrategy:
                                 continue
                             if name == 'pvo' and volume is None:
                                 continue
-                            input_data = volume if name == 'pvo' else close
+                            input_data = np.asarray(volume, dtype=np.float64) if name == 'pvo' else close
                             result = func(input_data, **params)
                         elif name == 'stoch_rsi':
                             if close is None:

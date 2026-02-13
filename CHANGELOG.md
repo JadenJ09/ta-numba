@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-12
+
+### Added
+- **Rust backend**: Optional PyO3-powered acceleration for all 44 bulk and 44 streaming indicators
+- `ta_numba.get_backend()` function to check active backend ("rust" or "numba")
+- `ta_numba.is_rust_available()` function to check Rust extension availability
+- Pre-built wheels for Linux (x86_64, aarch64), macOS (arm64, x86_64), and Windows (x64)
+- maturin-based build system for mixed Python/Rust packages
+
+### Performance
+- Bulk indicators: ~2.3x faster than Numba JIT
+- Streaming indicators: ~20x faster than Numba JIT
+- Zero API changes — Rust backend is a transparent drop-in
+
+### Changed
+- Build system switched from setuptools to maturin (backwards-compatible for pure-Python installs)
+- Numba JIT remains the automatic fallback on platforms without pre-built wheels
+
 ## [0.2.3] - 2025-07-24
 
 ### Added

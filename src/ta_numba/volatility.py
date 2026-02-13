@@ -91,3 +91,19 @@ bollinger_bands = bollinger_bands_numba
 keltner_channel = keltner_channel_numba
 donchian_channel = donchian_channel_numba
 ulcer_index = ulcer_index_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---
+from ._backend import _RUST_AVAILABLE, _rs
+if _RUST_AVAILABLE:
+    average_true_range_numba = _rs.average_true_range_numba
+    bollinger_bands_numba = _rs.bollinger_bands_numba
+    keltner_channel_numba = _rs.keltner_channel_numba
+    donchian_channel_numba = _rs.donchian_channel_numba
+    ulcer_index_numba = _rs.ulcer_index_numba
+    # Update convenience aliases
+    average_true_range = average_true_range_numba
+    bollinger_bands = bollinger_bands_numba
+    keltner_channel = keltner_channel_numba
+    donchian_channel = donchian_channel_numba
+    ulcer_index = ulcer_index_numba

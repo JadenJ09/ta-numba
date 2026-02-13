@@ -47,3 +47,16 @@ daily_return = daily_return_numba
 daily_log_return = daily_log_return_numba
 cumulative_return = cumulative_return_numba
 compound_log_return = compound_log_return_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---
+from ._backend import _RUST_AVAILABLE, _rs
+if _RUST_AVAILABLE:
+    daily_return_numba = _rs.daily_return_numba
+    daily_log_return_numba = _rs.daily_log_return_numba
+    cumulative_return_numba = _rs.cumulative_return_numba
+    # Update convenience aliases
+    daily_return = daily_return_numba
+    daily_log_return = daily_log_return_numba
+    cumulative_return = cumulative_return_numba
+    # Note: compound_log_return has no Rust equivalent (Python-only)

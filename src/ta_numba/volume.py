@@ -217,3 +217,56 @@ volume_price_trend = volume_price_trend_numba
 negative_volume_index = negative_volume_index_numba
 volume_weighted_average_price = volume_weighted_average_price_numba
 volume_weighted_exponential_moving_average = volume_weighted_exponential_moving_average_numba
+
+
+# --- Rust backend dispatch (transparent acceleration) ---
+from ._backend import _RUST_AVAILABLE, _rs
+if _RUST_AVAILABLE:
+    import numpy as _np
+
+    def _f64(arr):
+        """Ensure array is float64 for Rust backend."""
+        arr = _np.asarray(arr)
+        return arr if arr.dtype == _np.float64 else arr.astype(_np.float64)
+
+    def money_flow_index_numba(high, low, close, volume, n=14):
+        return _rs.money_flow_index_numba(_f64(high), _f64(low), _f64(close), _f64(volume), n=n)
+
+    def acc_dist_index_numba(high, low, close, volume):
+        return _rs.acc_dist_index_numba(_f64(high), _f64(low), _f64(close), _f64(volume))
+
+    def on_balance_volume_numba(close, volume):
+        return _rs.on_balance_volume_numba(_f64(close), _f64(volume))
+
+    def chaikin_money_flow_numba(high, low, close, volume, n=20):
+        return _rs.chaikin_money_flow_numba(_f64(high), _f64(low), _f64(close), _f64(volume), n=n)
+
+    def force_index_numba(close, volume, n=13):
+        return _rs.force_index_numba(_f64(close), _f64(volume), n=n)
+
+    def ease_of_movement_numba(high, low, volume, n=14):
+        return _rs.ease_of_movement_numba(_f64(high), _f64(low), _f64(volume), n=n)
+
+    def volume_price_trend_numba(close, volume):
+        return _rs.volume_price_trend_numba(_f64(close), _f64(volume))
+
+    def negative_volume_index_numba(close, volume):
+        return _rs.negative_volume_index_numba(_f64(close), _f64(volume))
+
+    def volume_weighted_average_price_numba(high, low, close, volume, n=14):
+        return _rs.volume_weighted_average_price_numba(_f64(high), _f64(low), _f64(close), _f64(volume), n=n)
+
+    def volume_weighted_exponential_moving_average_numba(high, low, close, volume, n_vwma=14, n_ema=20):
+        return _rs.volume_weighted_exponential_moving_average_numba(_f64(high), _f64(low), _f64(close), _f64(volume), n_vwma=n_vwma, n_ema=n_ema)
+
+    # Update convenience aliases
+    money_flow_index = money_flow_index_numba
+    acc_dist_index = acc_dist_index_numba
+    on_balance_volume = on_balance_volume_numba
+    chaikin_money_flow = chaikin_money_flow_numba
+    force_index = force_index_numba
+    ease_of_movement = ease_of_movement_numba
+    volume_price_trend = volume_price_trend_numba
+    negative_volume_index = negative_volume_index_numba
+    volume_weighted_average_price = volume_weighted_average_price_numba
+    volume_weighted_exponential_moving_average = volume_weighted_exponential_moving_average_numba
