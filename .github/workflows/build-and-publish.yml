@@ -11,7 +11,7 @@ permissions:
   packages: write
 
 jobs:
-  # Job 1: Run Python tests (no Rust needed - tests Numba fallback)
+  # Job 1: Run Python tests (no Rust - tests Numba fallback via PYTHONPATH)
   test-python:
     runs-on: ubuntu-latest
     strategy:
@@ -27,8 +27,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install numpy numba pytest
-          pip install -e . --no-build-isolation || pip install -e .
       - name: Verify Numba fallback
+        env:
+          PYTHONPATH: src
+          TA_NUMBA_DISABLE_RUST: "1"
         run: |
           python -c "
           import ta_numba
@@ -36,7 +38,10 @@ jobs:
           print('Numba fallback verified')
           "
       - name: Run unit tests
-        run: pytest tests/unit/ -v
+        env:
+          PYTHONPATH: src
+          TA_NUMBA_DISABLE_RUST: "1"
+        run: pytest tests/unit/ -v --ignore=tests/unit/test_rust_parity.py --ignore=tests/unit/test_rust_streaming.py
 
   # Job 2: Run tests WITH Rust backend
   test-rust:
@@ -49,23 +54,32 @@ jobs:
           python-version: "3.12"
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      - name: Install maturin and dependencies
+      - name: Create virtualenv and install dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m venv .venv
+          source .venv/bin/activate
           pip install maturin numpy numba pytest
       - name: Build Rust extension
-        run: maturin develop --release
+        run: |
+          source .venv/bin/activate
+          maturin develop --release
       - name: Verify Rust backend
         run: |
+          source .venv/bin/activate
           python -c "
           import ta_numba
           assert ta_numba.get_backend() == 'rust', f'Expected rust, got {ta_numba.get_backend()}'
           print('Rust backend verified')
           "
       - name: Run unit tests with Rust
-        run: pytest tests/unit/ -v
+        run: |
+          source .venv/bin/activate
+          pytest tests/unit/ -v
       - name: Run Rust parity tests
-        run: pytest tests/unit/test_rust_parity.py tests/unit/test_rust_streaming.py -v || true
+        run: |
+          source .venv/bin/activate
+          pytest tests/unit/test_rust_parity.py tests/unit/test_rust_streaming.py -v || true
 
   # Job 3: Build wheels for multiple platforms
   build-wheels:
