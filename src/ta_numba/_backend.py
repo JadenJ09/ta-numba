@@ -1,14 +1,17 @@
 """Rust backend detection and dispatch helpers."""
 
+import os
+
 _RUST_AVAILABLE = False
 _rs = None
 
-try:
-    from . import _ta_numba_rs
-    _RUST_AVAILABLE = True
-    _rs = _ta_numba_rs
-except ImportError:
-    pass
+if not os.environ.get("TA_NUMBA_DISABLE_RUST"):
+    try:
+        from . import _ta_numba_rs
+        _RUST_AVAILABLE = True
+        _rs = _ta_numba_rs
+    except ImportError:
+        pass
 
 
 def get_backend() -> str:

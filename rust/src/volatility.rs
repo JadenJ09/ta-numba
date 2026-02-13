@@ -2,7 +2,7 @@
 
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
-use crate::helpers::{sma_kernel, wilders_ema_kernel, true_range, rolling_std, rolling_min, rolling_max};
+use crate::helpers::{sma_kernel, sma_kernel_min0, wilders_ema_kernel, true_range, rolling_std, rolling_min, rolling_max};
 
 /// ATR - Average True Range (Wilder's method)
 ///
@@ -73,18 +73,23 @@ pub fn bollinger_bands<'py>(
     ))
 }
 
-/// Keltner Channel
+/// Keltner Channel (matching ta library original_version=True)
 ///
 /// # Arguments
 /// * `high` - High price series
 /// * `low` - Low price series
 /// * `close` - Close price series
 /// * `n_ema` - Period for typical price moving average (default: 20)
-/// * `n_atr` - Period for ATR calculation (default: 10)
-/// * `multiplier` - ATR multiplier for bands (default: 2.0)
+/// * `n_atr` - Unused (kept for API compatibility)
+/// * `k` - Unused (kept for API compatibility)
 ///
 /// # Returns
 /// Tuple of (upper_band, middle_band, lower_band) as numpy arrays
+///
+/// Uses ta library original_version formulas:
+/// - Middle: SMA(typical_price, n_ema) with min_periods=window
+/// - High band: SMA((4*H - 2*L + C)/3, n_ema) with min_periods=0
+/// - Low band: SMA((-2*H + 4*L + C)/3, n_ema) with min_periods=0
 #[pyfunction]
 #[pyo3(name = "keltner_channel_numba", signature = (high, low, close, n_ema=20, n_atr=10, k=2.0))]
 pub fn keltner_channel<'py>(
@@ -93,7 +98,9 @@ pub fn keltner_channel<'py>(
     low: PyReadonlyArray1<'py, f64>,
     close: PyReadonlyArray1<'py, f64>,
     n_ema: usize,
+    #[allow(unused_variables)]
     n_atr: usize,
+    #[allow(unused_variables)]
     k: f64,
 ) -> PyResult<(Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>)> {
     let high_slice = high.as_slice()?;
@@ -101,25 +108,26 @@ pub fn keltner_channel<'py>(
     let close_slice = close.as_slice()?;
     let len = high_slice.len();
 
+    // Middle: SMA(typical_price, n_ema) with standard min_periods=window
     let mut typical_price = vec![0.0; len];
     for i in 0..len {
         typical_price[i] = (high_slice[i] + low_slice[i] + close_slice[i]) / 3.0;
     }
-
     let middle = sma_kernel(&typical_price, n_ema);
 
-    let tr = true_range(high_slice, low_slice, close_slice);
-    let atr_values = wilders_ema_kernel(&tr, n_atr);
-
-    let mut upper = vec![f64::NAN; len];
-    let mut lower = vec![f64::NAN; len];
-
+    // High band: SMA((4*H - 2*L + C)/3, n_ema) with min_periods=0
+    let mut high_tp = vec![0.0; len];
     for i in 0..len {
-        if !middle[i].is_nan() && !atr_values[i].is_nan() {
-            upper[i] = middle[i] + k * atr_values[i];
-            lower[i] = middle[i] - k * atr_values[i];
-        }
+        high_tp[i] = (4.0 * high_slice[i] - 2.0 * low_slice[i] + close_slice[i]) / 3.0;
     }
+    let upper = sma_kernel_min0(&high_tp, n_ema);
+
+    // Low band: SMA((-2*H + 4*L + C)/3, n_ema) with min_periods=0
+    let mut low_tp = vec![0.0; len];
+    for i in 0..len {
+        low_tp[i] = (-2.0 * high_slice[i] + 4.0 * low_slice[i] + close_slice[i]) / 3.0;
+    }
+    let lower = sma_kernel_min0(&low_tp, n_ema);
 
     Ok((
         PyArray1::from_vec(py, upper),

@@ -308,6 +308,31 @@ pub fn ema_kernel_nan_aware(data: &[f64], alpha: f64, adjusted: bool) -> Vec<f64
     result
 }
 
+/// SMA with min_periods=0 (expanding window until full window reached)
+/// For indices < window, computes mean over all available elements (expanding window).
+/// For indices >= window, computes standard rolling SMA over the last `window` elements.
+pub fn sma_kernel_min0(data: &[f64], window: usize) -> Vec<f64> {
+    let n = data.len();
+    let mut result = vec![f64::NAN; n];
+    if window == 0 || n == 0 {
+        return result;
+    }
+    let mut sum = 0.0;
+    for i in 0..n {
+        sum += data[i];
+        if i + 1 >= window {
+            if i >= window {
+                sum -= data[i - window];
+            }
+            result[i] = sum / window as f64;
+        } else {
+            // Expanding window: divide by number of elements seen so far
+            result[i] = sum / (i + 1) as f64;
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -283,15 +283,13 @@ pub fn dpo<'py>(
     let len = close_slice.len();
 
     let sma_values = sma_kernel(close_slice, n);
-    let shift = (n / 2) + 1;
+    let shift = n / 2 + 1;
 
     let mut dpo_values = vec![f64::NAN; len];
-    for i in 0..len {
-        if i >= shift - 1 {
-            let sma_idx = i + 1 - shift;
-            if sma_idx < len && !sma_values[sma_idx].is_nan() {
-                dpo_values[i] = close_slice[i] - sma_values[sma_idx];
-            }
+    // DPO[i] = close[i - displacement] - sma[i]
+    for i in shift..len {
+        if !sma_values[i].is_nan() {
+            dpo_values[i] = close_slice[i - shift] - sma_values[i];
         }
     }
 
@@ -380,57 +378,82 @@ pub fn parabolic_sar<'py>(
     let close_slice = close.as_slice()?;
     let len = high_slice.len();
 
-    if len < 2 {
-        return Ok(PyArray1::from_vec(py, vec![f64::NAN; len]));
+    if len < 3 {
+        // Match Python: sar = close.copy()
+        return Ok(PyArray1::from_vec(py, close_slice.to_vec()));
     }
 
-    let mut sar = vec![f64::NAN; len];
-    let mut is_long = close_slice[1] > close_slice[0];
+    // Initialize with close values like TA library: sar = close.copy()
+    let mut sar = close_slice.to_vec();
+
+    // Match Python exactly:
+    let mut up_trend = true;
     let mut af = af_start;
-    let mut extreme_point = if is_long { high_slice[1] } else { low_slice[1] };
+    let mut up_trend_high = high_slice[0];
+    let mut down_trend_low = low_slice[0];
 
-    sar[0] = if is_long { low_slice[0] } else { high_slice[0] };
-    sar[1] = sar[0];
-
+    // Start calculations from index 2 (like TA library)
     for i in 2..len {
-        let prev_sar = sar[i - 1];
-        let mut new_sar = prev_sar + af * (extreme_point - prev_sar);
+        let mut reversal = false;
+        let max_high = high_slice[i];
+        let min_low = low_slice[i];
 
-        let mut trend_changed = false;
+        if up_trend {
+            // SAR = prev_sar + af * (up_trend_high - prev_sar)
+            sar[i] = sar[i - 1] + af * (up_trend_high - sar[i - 1]);
 
-        if is_long {
-            new_sar = new_sar.min(low_slice[i - 1]).min(low_slice[i - 2]);
-
-            if low_slice[i] < new_sar {
-                trend_changed = true;
-                is_long = false;
-                new_sar = extreme_point;
-                extreme_point = low_slice[i];
+            if min_low < sar[i] {
+                // Reversal: switch to downtrend
+                reversal = true;
+                sar[i] = up_trend_high;
+                down_trend_low = min_low;
                 af = af_start;
             } else {
-                if high_slice[i] > extreme_point {
-                    extreme_point = high_slice[i];
+                // No reversal: update EP and AF
+                if max_high > up_trend_high {
+                    up_trend_high = max_high;
                     af = (af + af_inc).min(af_max);
+                }
+
+                // Apply SAR constraints for uptrend (after EP update)
+                let low1 = low_slice[i - 1];
+                let low2 = low_slice[i - 2];
+                if low2 < sar[i] {
+                    sar[i] = low2;
+                } else if low1 < sar[i] {
+                    sar[i] = low1;
                 }
             }
         } else {
-            new_sar = new_sar.max(high_slice[i - 1]).max(high_slice[i - 2]);
+            // SAR = prev_sar - af * (prev_sar - down_trend_low)
+            sar[i] = sar[i - 1] - af * (sar[i - 1] - down_trend_low);
 
-            if high_slice[i] > new_sar {
-                trend_changed = true;
-                is_long = true;
-                new_sar = extreme_point;
-                extreme_point = high_slice[i];
+            if max_high > sar[i] {
+                // Reversal: switch to uptrend
+                reversal = true;
+                sar[i] = down_trend_low;
+                up_trend_high = max_high;
                 af = af_start;
             } else {
-                if low_slice[i] < extreme_point {
-                    extreme_point = low_slice[i];
+                // No reversal: update EP and AF
+                if min_low < down_trend_low {
+                    down_trend_low = min_low;
                     af = (af + af_inc).min(af_max);
+                }
+
+                // Apply SAR constraints for downtrend (after EP update)
+                let high1 = high_slice[i - 1];
+                let high2 = high_slice[i - 2];
+                if high2 > sar[i] {
+                    sar[i] = high2;
+                } else if high1 > sar[i] {
+                    sar[i] = high1;
                 }
             }
         }
 
-        sar[i] = new_sar;
+        // XOR logic: up_trend = up_trend != reversal
+        up_trend = up_trend != reversal;
     }
 
     Ok(PyArray1::from_vec(py, sar))
@@ -767,8 +790,8 @@ pub fn aroon<'py>(
     let mut aroon_up = vec![f64::NAN; len];
     let mut aroon_down = vec![f64::NAN; len];
 
-    for i in (n - 1)..len {
-        let window_start = i + 1 - n;
+    for i in n..len {
+        let window_start = i - n; // i-n to i inclusive = n+1 elements
         let high_window = &high_slice[window_start..=i];
         let low_window = &low_slice[window_start..=i];
 
@@ -780,8 +803,11 @@ pub fn aroon<'py>(
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .unwrap();
 
-        aroon_up[i] = ((n - 1 - max_idx) as f64 / (n - 1) as f64) * 100.0;
-        aroon_down[i] = ((n - 1 - min_idx) as f64 / (n - 1) as f64) * 100.0;
+        let periods_since_high = high_window.len() - 1 - max_idx;
+        let periods_since_low = low_window.len() - 1 - min_idx;
+
+        aroon_up[i] = (n as f64 - periods_since_high as f64) / n as f64 * 100.0;
+        aroon_down[i] = (n as f64 - periods_since_low as f64) / n as f64 * 100.0;
     }
 
     Ok((
