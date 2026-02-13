@@ -2,7 +2,7 @@
 
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
-use crate::helpers::{sma_kernel, rolling_min, rolling_max, ema_kernel, true_range, rolling_sum};
+use crate::helpers::{sma_kernel, sma_kernel_nan_aware, rolling_min, rolling_max, ema_kernel, true_range, rolling_sum};
 
 /// RSI - Relative Strength Index (Wilder's method)
 ///
@@ -112,7 +112,7 @@ pub fn stochastic<'py>(
         }
     }
 
-    let percent_d = sma_kernel(&percent_k, d);
+    let percent_d = sma_kernel_nan_aware(&percent_k, d);
 
     Ok((
         PyArray1::from_vec(py, percent_k),
@@ -372,8 +372,8 @@ pub fn stochastic_rsi<'py>(
         }
     }
 
-    let stoch_k = sma_kernel(&stoch_rsi, k);
-    let stoch_d = sma_kernel(&stoch_k, d);
+    let stoch_k = sma_kernel_nan_aware(&stoch_rsi, k);
+    let stoch_d = sma_kernel_nan_aware(&stoch_k, d);
 
     Ok((
         PyArray1::from_vec(py, stoch_rsi),

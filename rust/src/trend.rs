@@ -2,7 +2,7 @@
 
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
-use crate::helpers::{sma_kernel, ema_kernel, wilders_ema_kernel, true_range, rolling_sum};
+use crate::helpers::{sma_kernel, sma_kernel_nan_aware, ema_kernel, ema_kernel_nan_aware, wilders_ema_kernel, true_range, rolling_sum};
 
 /// Simple Moving Average
 ///
@@ -548,11 +548,12 @@ pub fn kst<'py>(
     let close_slice = close.as_slice()?;
     let len = close_slice.len();
 
+    // ROC uses raw ratio (not * 100) to match ta library
     let calc_roc = |window: usize| -> Vec<f64> {
         let mut roc = vec![f64::NAN; len];
         for i in window..len {
             if close_slice[i - window] != 0.0 {
-                roc[i] = (close_slice[i] - close_slice[i - window]) / close_slice[i - window] * 100.0;
+                roc[i] = (close_slice[i] - close_slice[i - window]) / close_slice[i - window];
             }
         }
         roc
@@ -563,19 +564,29 @@ pub fn kst<'py>(
     let roc3 = calc_roc(r3);
     let roc4 = calc_roc(r4);
 
-    let rcma1 = sma_kernel(&roc1, s1);
-    let rcma2 = sma_kernel(&roc2, s2);
-    let rcma3 = sma_kernel(&roc3, s3);
-    let rcma4 = sma_kernel(&roc4, s4);
+    // Use NaN-aware SMA (requires all values in window to be non-NaN)
+    let rcma1 = sma_kernel_nan_aware(&roc1, s1);
+    let rcma2 = sma_kernel_nan_aware(&roc2, s2);
+    let rcma3 = sma_kernel_nan_aware(&roc3, s3);
+    let rcma4 = sma_kernel_nan_aware(&roc4, s4);
 
+    // Match Python: nan_to_num(rcma, nan=0.0) then weighted sum * 100
     let mut kst_values = vec![f64::NAN; len];
     for i in 0..len {
-        if !rcma1[i].is_nan() && !rcma2[i].is_nan() && !rcma3[i].is_nan() && !rcma4[i].is_nan() {
-            kst_values[i] = rcma1[i] + 2.0 * rcma2[i] + 3.0 * rcma3[i] + 4.0 * rcma4[i];
+        let v1 = if rcma1[i].is_nan() { 0.0 } else { rcma1[i] };
+        let v2 = if rcma2[i].is_nan() { 0.0 } else { rcma2[i] };
+        let v3 = if rcma3[i].is_nan() { 0.0 } else { rcma3[i] };
+        let v4 = if rcma4[i].is_nan() { 0.0 } else { rcma4[i] };
+        let val = (v1 * 1.0 + v2 * 2.0 + v3 * 3.0 + v4 * 4.0) * 100.0;
+        // Only set NaN if ALL components are NaN
+        if rcma1[i].is_nan() && rcma2[i].is_nan() && rcma3[i].is_nan() && rcma4[i].is_nan() {
+            kst_values[i] = f64::NAN;
+        } else {
+            kst_values[i] = val;
         }
     }
 
-    let signal = sma_kernel(&kst_values, n_sig);
+    let signal = sma_kernel_nan_aware(&kst_values, n_sig);
 
     Ok((
         PyArray1::from_vec(py, kst_values),
@@ -704,23 +715,30 @@ pub fn schaff_trend_cycle<'py>(
     }
 
     let alpha_smooth = 2.0 / (n_smooth as f64 + 1.0);
-    let pf_smooth = ema_kernel(&pf, alpha_smooth, false);
+    // Use NaN-aware adjusted EMA to handle NaN-prefixed pf data
+    let pf_smooth = ema_kernel_nan_aware(&pf, alpha_smooth, true);
 
     let mut pff = vec![f64::NAN; len];
     for i in (n_stoch - 1)..len {
         let window_start = i + 1 - n_stoch;
         let pf_slice = &pf_smooth[window_start..=i];
-        let lowest = pf_slice.iter().filter(|x| !x.is_nan()).copied().fold(f64::INFINITY, f64::min);
-        let highest = pf_slice.iter().filter(|x| !x.is_nan()).copied().fold(f64::NEG_INFINITY, f64::max);
+        // Skip windows that are all NaN
+        let non_nan: Vec<f64> = pf_slice.iter().filter(|x| !x.is_nan()).copied().collect();
+        if non_nan.is_empty() {
+            continue;
+        }
+        let lowest = non_nan.iter().copied().fold(f64::INFINITY, f64::min);
+        let highest = non_nan.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
-        if highest > lowest {
+        if !pf_smooth[i].is_nan() && highest > lowest {
             pff[i] = 100.0 * (pf_smooth[i] - lowest) / (highest - lowest);
-        } else {
+        } else if !pf_smooth[i].is_nan() {
             pff[i] = 0.0;
         }
     }
 
-    let stc = ema_kernel(&pff, alpha_smooth, false);
+    // Use NaN-aware adjusted EMA for final smoothing
+    let stc = ema_kernel_nan_aware(&pff, alpha_smooth, true);
 
     Ok(PyArray1::from_vec(py, stc))
 }

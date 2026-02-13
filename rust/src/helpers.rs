@@ -25,6 +25,35 @@ pub fn sma_kernel(data: &[f64], window: usize) -> Vec<f64> {
     result
 }
 
+/// NaN-aware SMA kernel: only computes mean when all values in window are non-NaN
+pub fn sma_kernel_nan_aware(data: &[f64], window: usize) -> Vec<f64> {
+    let n = data.len();
+    let mut result = vec![f64::NAN; n];
+
+    if window > n || window == 0 {
+        return result;
+    }
+
+    for i in (window - 1)..n {
+        let window_start = i + 1 - window;
+        let slice = &data[window_start..=i];
+        let mut all_valid = true;
+        let mut sum = 0.0;
+        for &val in slice {
+            if val.is_nan() {
+                all_valid = false;
+                break;
+            }
+            sum += val;
+        }
+        if all_valid {
+            result[i] = sum / window as f64;
+        }
+    }
+
+    result
+}
+
 /// Exponential Moving Average kernel with optional pandas-style adjustment
 pub fn ema_kernel(data: &[f64], alpha: f64, adjusted: bool) -> Vec<f64> {
     let n = data.len();
@@ -58,10 +87,51 @@ pub fn ema_kernel(data: &[f64], alpha: f64, adjusted: bool) -> Vec<f64> {
     result
 }
 
-/// Wilder's smoothing - equivalent to EMA with alpha=1/window, unadjusted
+/// Wilder's smoothing - matches ta-lib style: SMA seed from first n non-NaN values
 pub fn wilders_ema_kernel(data: &[f64], window: usize) -> Vec<f64> {
+    let n = data.len();
+    let mut result = vec![f64::NAN; n];
+
+    if window == 0 || n == 0 {
+        return result;
+    }
+
+    // Find first `window` non-NaN values and their indices
+    let mut non_nan_count = 0;
+    let mut sum = 0.0;
+    let mut start_idx = 0;
+
+    for i in 0..n {
+        if !data[i].is_nan() {
+            sum += data[i];
+            non_nan_count += 1;
+            if non_nan_count == window {
+                start_idx = i;
+                break;
+            }
+        }
+    }
+
+    if non_nan_count < window {
+        return result; // Not enough non-NaN values
+    }
+
+    // Seed with SMA of first `window` non-NaN values
+    let mut wema = sum / window as f64;
+    result[start_idx] = wema;
+
+    // Subsequent Wilder's EMA: wema = (prev * (n-1) + curr) / n
     let alpha = 1.0 / window as f64;
-    ema_kernel(data, alpha, false)
+    for i in (start_idx + 1)..n {
+        if data[i].is_nan() {
+            result[i] = result[i - 1]; // Carry forward on NaN
+        } else {
+            wema = data[i] * alpha + wema * (1.0 - alpha);
+            result[i] = wema;
+        }
+    }
+
+    result
 }
 
 /// Calculate True Range for each bar
@@ -175,6 +245,64 @@ pub fn rolling_sum(data: &[f64], window: usize) -> Vec<f64> {
             sum += data[i];
         }
         result[i] = sum;
+    }
+
+    result
+}
+
+/// EMA kernel that handles NaN by finding first non-NaN value as seed
+/// and carrying forward previous value when current is NaN.
+/// Uses pandas-style adjusted=True weighting, skipping NaN entries.
+pub fn ema_kernel_nan_aware(data: &[f64], alpha: f64, adjusted: bool) -> Vec<f64> {
+    let n = data.len();
+    let mut result = vec![f64::NAN; n];
+
+    if n == 0 {
+        return result;
+    }
+
+    if adjusted {
+        // Adjusted EMA that skips NaN values
+        let one_minus_alpha = 1.0 - alpha;
+        let mut weighted_sum = 0.0;
+        let mut weight_sum = 0.0;
+        let mut started = false;
+
+        for i in 0..n {
+            if !data[i].is_nan() {
+                weighted_sum = data[i] + one_minus_alpha * weighted_sum;
+                weight_sum = 1.0 + one_minus_alpha * weight_sum;
+                if weight_sum > 0.0 {
+                    result[i] = weighted_sum / weight_sum;
+                }
+                started = true;
+            } else if started {
+                // Carry forward previous value
+                result[i] = result[i - 1];
+            }
+        }
+    } else {
+        // Unadjusted EMA: find first non-NaN, carry forward on NaN
+        let mut first_valid = None;
+        for i in 0..n {
+            if !data[i].is_nan() {
+                first_valid = Some(i);
+                break;
+            }
+        }
+
+        if let Some(start) = first_valid {
+            result[start] = data[start];
+            let mut prev = data[start];
+            for i in (start + 1)..n {
+                if data[i].is_nan() {
+                    result[i] = prev;
+                } else {
+                    prev = alpha * data[i] + (1.0 - alpha) * prev;
+                    result[i] = prev;
+                }
+            }
+        }
     }
 
     result

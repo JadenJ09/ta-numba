@@ -267,8 +267,8 @@ pub fn eom<'py>(
         }
     }
 
-    let emv_smooth = crate::helpers::sma_kernel(&emv_raw, n);
-    Ok(PyArray1::from_vec(py, emv_smooth))
+    // Return raw EMV values (no SMA applied) to match ta library
+    Ok(PyArray1::from_vec(py, emv_raw))
 }
 
 /// Volume Price Trend (VPT)
