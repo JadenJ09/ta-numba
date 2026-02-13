@@ -79,10 +79,34 @@ Dependencies: `numpy`, `numba` (automatically installed)
 
 ## Rust Backend (v0.3.0+)
 
-Starting with v0.3.0, ta-numba includes an optional Rust backend powered by PyO3 that provides additional speedups:
+Starting with v0.3.0, ta-numba includes an optional Rust/PyO3 backend that accelerates **streaming indicators** for real-time trading applications.
 
-- **Bulk indicators**: ~2.3x faster than Numba
-- **Streaming indicators**: ~20x faster than Numba
+### Streaming Performance (Rust vs Numba)
+
+Benchmarked on 10,000 price ticks, 10 iterations, median timing:
+
+| Indicator | Rust (ms) | Numba (ms) | Speedup |
+|---|---|---|---|
+| UlcerIndex | 16.9 | 225.2 | **13.3x** |
+| StochasticRSI | 10.3 | 94.0 | **9.2x** |
+| AwesomeOscillator | 6.7 | 54.1 | **8.1x** |
+| BollingerBands | 11.2 | 81.2 | **7.2x** |
+| UltimateOscillator | 15.8 | 109.0 | **6.9x** |
+| CCI | 8.5 | 52.8 | **6.2x** |
+| TSI | 5.0 | 28.7 | **5.8x** |
+| DPO | 5.2 | 26.9 | **5.2x** |
+| KAMA | 8.5 | 42.4 | **5.0x** |
+| SMA | 5.1 | 25.6 | **5.0x** |
+| MACD | 5.3 | 20.6 | **3.9x** |
+| RSI | 5.0 | 13.9 | **2.8x** |
+| ATR | 8.6 | 17.9 | **2.1x** |
+| ADX | 11.2 | 22.2 | **2.0x** |
+
+**Average streaming speedup: 2.6x** | Complex indicators: **5-13x faster**
+
+Rust excels on indicators with internal state machines, rolling window statistics, or multi-stage computations. Simple indicators (OBV, DailyReturn, ROC) remain faster with Numba due to minimal computation making FFI overhead dominant.
+
+Bulk array operations continue to use Numba JIT, which is optimal for vectorized computation on NumPy arrays.
 
 ### How It Works
 
@@ -97,9 +121,14 @@ import ta_numba
 print(ta_numba.get_backend())  # "rust" or "numba"
 ```
 
-### Building from Source
+### Disable Rust Backend
 
-To build with the Rust backend from source:
+```bash
+# Force Numba backend (useful for debugging or benchmarking)
+export TA_NUMBA_DISABLE_RUST=1
+```
+
+### Building from Source
 
 ```bash
 # Requires Rust toolchain (rustup.rs)
@@ -109,15 +138,15 @@ maturin develop --release
 
 ### API Compatibility
 
-The Rust backend is 100% API-compatible. No code changes needed — the same imports work regardless of backend:
+The Rust backend is 100% API-compatible. No code changes needed:
 
 ```python
-import ta_numba.bulk as bulk
 import ta_numba.stream as stream
 
-# These automatically use Rust when available
-sma = bulk.trend.sma_numba(prices, n=20)
-rsi_stream = stream.RSI(window=14)
+# Automatically uses Rust when available, Numba fallback otherwise
+rsi = stream.RSI(window=14)
+for price in live_prices:
+    result = rsi.update(price)  # Rust-accelerated
 ```
 
 ## **🚀 Quick Start**

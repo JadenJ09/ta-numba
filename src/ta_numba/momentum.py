@@ -191,28 +191,3 @@ pvo = percentage_volume_oscillator_numba
 
 
 # --- Rust backend dispatch (transparent acceleration) ---
-from ._backend import _RUST_AVAILABLE, _rs
-if _RUST_AVAILABLE:
-    relative_strength_index_numba = _rs.relative_strength_index_numba
-    stochastic_oscillator_numba = _rs.stochastic_oscillator_numba
-    williams_r_numba = _rs.williams_r_numba
-    percentage_price_oscillator_numba = _rs.percentage_price_oscillator_numba
-    ultimate_oscillator_numba = _rs.ultimate_oscillator_numba
-    stochastic_rsi_numba = _rs.stochastic_rsi_numba
-    true_strength_index_numba = _rs.true_strength_index_numba
-    awesome_oscillator_numba = _rs.awesome_oscillator_numba
-    kaufmans_adaptive_moving_average_numba = _rs.kaufmans_adaptive_moving_average_numba
-    rate_of_change_numba = _rs.rate_of_change_numba
-    percentage_volume_oscillator_numba = _rs.percentage_volume_oscillator_numba
-    # Update convenience aliases
-    rsi = relative_strength_index_numba
-    stoch = stochastic_oscillator_numba
-    williams_r = williams_r_numba
-    ppo = percentage_price_oscillator_numba
-    ultimate_oscillator = ultimate_oscillator_numba
-    stochrsi = stochastic_rsi_numba
-    tsi = true_strength_index_numba
-    awesome_oscillator = awesome_oscillator_numba
-    kama = kaufmans_adaptive_moving_average_numba
-    roc = rate_of_change_numba
-    pvo = percentage_volume_oscillator_numba

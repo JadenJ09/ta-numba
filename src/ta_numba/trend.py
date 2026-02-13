@@ -444,36 +444,3 @@ aroon = aroon_numba
 
 
 # --- Rust backend dispatch (transparent acceleration) ---
-from ._backend import _RUST_AVAILABLE, _rs
-if _RUST_AVAILABLE:
-    sma_numba = _rs.sma_numba
-    ema_numba = _rs.ema_numba
-    weighted_moving_average = _rs.weighted_moving_average
-    macd_numba = _rs.macd_numba
-    adx_numba = _rs.adx_numba
-    vortex_indicator_numba = _rs.vortex_indicator_numba
-    trix_numba = _rs.trix_numba
-    mass_index_numba = _rs.mass_index_numba
-    cci_numba = _rs.cci_numba
-    dpo_numba = _rs.dpo_numba
-    kst_numba = _rs.kst_numba
-    ichimoku_numba = _rs.ichimoku_numba
-    parabolic_sar_numba = _rs.parabolic_sar_numba
-    schaff_trend_cycle_numba = _rs.schaff_trend_cycle_numba
-    aroon_numba = _rs.aroon_numba
-    # Update convenience aliases
-    sma = sma_numba
-    ema = ema_numba
-    wma = weighted_moving_average
-    macd = macd_numba
-    adx = adx_numba
-    vortex_indicator = vortex_indicator_numba
-    trix = trix_numba
-    mass_index = mass_index_numba
-    cci = cci_numba
-    dpo = dpo_numba
-    kst = kst_numba
-    ichimoku = ichimoku_numba
-    parabolic_sar = parabolic_sar_numba
-    schaff_trend_cycle = schaff_trend_cycle_numba
-    aroon = aroon_numba
