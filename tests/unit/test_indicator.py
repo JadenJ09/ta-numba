@@ -286,6 +286,7 @@ def test_kc(ohlcv_data):
         ohlcv_data["Close"].values,
         n_ema=20,
         n_atr=10,
+        original_version=True,
     )
     assert_series_equal(expected_h, pd.Series(actual_h, index=ohlcv_data.index))
     assert_series_equal(expected_m, pd.Series(actual_m, index=ohlcv_data.index))

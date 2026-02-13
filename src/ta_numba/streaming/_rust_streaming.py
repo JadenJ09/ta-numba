@@ -204,8 +204,8 @@ class ADXStreaming:
 
 class CCIStreaming:
     """Commodity Channel Index - Streaming"""
-    def __init__(self, window=20):
-        self._inner = _rs.CCIStreaming(window)
+    def __init__(self, window=20, constant=0.015):
+        self._inner = _rs.CCIStreaming(window, constant)
         self._current_value = float('nan')
         self._is_ready = False
         self._update_count = 0
@@ -406,9 +406,9 @@ class ParabolicSARStreaming:
         self._update_count = 0
         self._window = 1
 
-    def update(self, high, low):
+    def update(self, high, low, close):
         self._update_count += 1
-        result = self._inner.update(high, low)
+        result = self._inner.update(high, low, close)
         self._current_value = result
         self._is_ready = not math.isnan(result)
         return {"psar": result}
@@ -1107,6 +1107,162 @@ class UlcerIndexStreaming:
         self._update_count = 0
 
 
+class StandardDeviationStreaming:
+    """Rolling Standard Deviation - Streaming"""
+    def __init__(self, window=20):
+        self._inner = _rs.StandardDeviationStreaming(window)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, value):
+        self._update_count += 1
+        result = self._inner.update(value)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"std": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
+class VarianceStreaming:
+    """Rolling Variance - Streaming"""
+    def __init__(self, window=20):
+        self._inner = _rs.VarianceStreaming(window)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, value):
+        self._update_count += 1
+        result = self._inner.update(value)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"variance": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
+class RangeStreaming:
+    """Rolling Range (High - Low) - Streaming"""
+    def __init__(self, window=20):
+        self._inner = _rs.RangeStreaming(window)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, high, low):
+        self._update_count += 1
+        result = self._inner.update(high, low)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"range": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
+class HistoricalVolatilityStreaming:
+    """Historical Volatility (annualized rolling std of log returns) - Streaming"""
+    def __init__(self, window=20, annualize=True):
+        self._inner = _rs.HistoricalVolatilityStreaming(window, annualize)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, value):
+        self._update_count += 1
+        result = self._inner.update(value)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"hvol": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
 # ============================================================================
 # VOLUME INDICATORS (10 classes)
 # ============================================================================
@@ -1501,8 +1657,47 @@ class VWEMAStreaming:
         self._update_count = 0
 
 
+class VolumeRatioStreaming:
+    """Volume Ratio (volume / SMA(volume)) - Streaming"""
+    def __init__(self, window=50):
+        self._inner = _rs.VolumeRatioStreaming(window)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, volume):
+        self._update_count += 1
+        result = self._inner.update(volume)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"volume_ratio": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
 # ============================================================================
-# OTHER INDICATORS (7 classes)
+# OTHER INDICATORS (8 classes)
 # ============================================================================
 
 class DailyReturnStreaming:
@@ -1622,6 +1817,45 @@ class CumulativeReturnStreaming:
         self._update_count = 0
 
 
+class CompoundLogReturnStreaming:
+    """Compound Log Return - Streaming"""
+    def __init__(self):
+        self._inner = _rs.CompoundLogReturnStreaming()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = 1
+
+    def update(self, value):
+        self._update_count += 1
+        result = self._inner.update(value)
+        self._current_value = result
+        self._is_ready = True
+        return {"clr": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
 class RollingReturnStreaming:
     """Rolling Return - Streaming"""
     def __init__(self, window=20):
@@ -1702,8 +1936,8 @@ class MaxDrawdownStreaming:
 
 class SharpeRatioStreaming:
     """Sharpe Ratio - Streaming"""
-    def __init__(self, window=252, risk_free_rate=0.0):
-        self._inner = _rs.SharpeRatioStreaming(window, risk_free_rate)
+    def __init__(self, window=252, risk_free_rate=0.0, annualization_factor=252.0):
+        self._inner = _rs.SharpeRatioStreaming(window, risk_free_rate, annualization_factor)
         self._current_value = float('nan')
         self._is_ready = False
         self._update_count = 0
@@ -1754,6 +1988,123 @@ class CalmarRatioStreaming:
         self._current_value = result
         self._is_ready = not math.isnan(result)
         return {"calmar": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
+class RollingZScoreStreaming:
+    """Rolling Z-Score - Streaming"""
+    def __init__(self, window=20):
+        self._inner = _rs.RollingZScoreStreaming(window)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, value):
+        self._update_count += 1
+        result = self._inner.update(value)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"zscore": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
+class LinearRegressionSlopeStreaming:
+    """Linear Regression Slope - Streaming"""
+    def __init__(self, window=14):
+        self._inner = _rs.LinearRegressionSlopeStreaming(window)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, value):
+        self._update_count += 1
+        result = self._inner.update(value)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"slope": result}
+
+    @property
+    def current_value(self):
+        return self._current_value
+
+    @property
+    def is_ready(self):
+        return self._is_ready
+
+    @property
+    def update_count(self):
+        return self._update_count
+
+    @property
+    def window(self):
+        return self._window
+
+    def reset(self):
+        self._inner.reset()
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+
+
+class RollingPercentileStreaming:
+    """Rolling Percentile - Streaming"""
+    def __init__(self, window=120):
+        self._inner = _rs.RollingPercentileStreaming(window)
+        self._current_value = float('nan')
+        self._is_ready = False
+        self._update_count = 0
+        self._window = window
+
+    def update(self, value):
+        self._update_count += 1
+        result = self._inner.update(value)
+        self._current_value = result
+        self._is_ready = not math.isnan(result)
+        return {"percentile": result}
 
     @property
     def current_value(self):

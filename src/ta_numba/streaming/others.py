@@ -214,9 +214,10 @@ class SharpeRatioStreaming(StreamingIndicator):
     Risk-adjusted return metric.
     """
 
-    def __init__(self, window: int = 252, risk_free_rate: float = 0.02):
+    def __init__(self, window: int = 252, risk_free_rate: float = 0.02, annualization_factor: float = 252.0):
         super().__init__(window)
         self.risk_free_rate = risk_free_rate
+        self.annualization_factor = annualization_factor
         self.prev_close = np.nan
         self.returns_buffer = deque(maxlen=window)
 
@@ -239,8 +240,8 @@ class SharpeRatioStreaming(StreamingIndicator):
                 returns_array = np.array(self.returns_buffer)
 
                 # Calculate annualized return and volatility
-                avg_return = np.mean(returns_array) * 252
-                volatility = np.std(returns_array, ddof=1) * np.sqrt(252)
+                avg_return = np.mean(returns_array) * self.annualization_factor
+                volatility = np.std(returns_array, ddof=1) * np.sqrt(self.annualization_factor)
 
                 # Calculate Sharpe ratio
                 if volatility > 0:
@@ -286,6 +287,96 @@ class MaxDrawdownStreaming(StreamingIndicator):
 
             # Find maximum drawdown
             self._current_value = np.min(drawdowns) * 100.0  # Convert to percentage
+            self._is_ready = True
+
+        return self._current_value
+
+
+class RollingZScoreStreaming(StreamingIndicator):
+    """
+    Streaming Rolling Z-Score.
+
+    (x - rolling_mean) / rolling_std with Welford's online algorithm.
+    """
+
+    def __init__(self, window: int = 20):
+        super().__init__(window)
+
+    def update(self, value: float) -> float:
+        """Update Rolling Z-Score with new value."""
+        self._update_count += 1
+        self.buffer.append(value)
+
+        if len(self.buffer) >= self.window:
+            buffer_array = self.get_buffer_array()
+            mean = np.mean(buffer_array)
+            std = np.std(buffer_array)
+
+            if std != 0:
+                self._current_value = (value - mean) / std
+            else:
+                self._current_value = 0.0
+
+            self._is_ready = True
+
+        return self._current_value
+
+
+class LinearRegressionSlopeStreaming(StreamingIndicator):
+    """
+    Streaming Linear Regression Slope.
+
+    Uses running sums for O(1) updates.
+    """
+
+    def __init__(self, window: int = 14):
+        super().__init__(window)
+
+        # Precompute x-related constants (x = 0, 1, ..., window-1)
+        w = window
+        self._sum_x = w * (w - 1) / 2.0
+        self._sum_x2 = w * (w - 1) * (2 * w - 1) / 6.0
+        self._denom = w * self._sum_x2 - self._sum_x * self._sum_x
+
+    def update(self, value: float) -> float:
+        """Update Linear Regression Slope with new value."""
+        self._update_count += 1
+        self.buffer.append(value)
+
+        if len(self.buffer) >= self.window and self._denom != 0:
+            buffer_array = self.get_buffer_array()
+            sum_y = np.sum(buffer_array)
+            sum_xy = 0.0
+            for j in range(self.window):
+                sum_xy += j * buffer_array[j]
+
+            self._current_value = (
+                self.window * sum_xy - self._sum_x * sum_y
+            ) / self._denom
+            self._is_ready = True
+
+        return self._current_value
+
+
+class RollingPercentileStreaming(StreamingIndicator):
+    """
+    Streaming Rolling Percentile.
+
+    Fraction of values in window <= current value.
+    """
+
+    def __init__(self, window: int = 120):
+        super().__init__(window)
+
+    def update(self, value: float) -> float:
+        """Update Rolling Percentile with new value."""
+        self._update_count += 1
+        self.buffer.append(value)
+
+        if len(self.buffer) >= self.window:
+            buffer_array = self.get_buffer_array()
+            count = np.sum(buffer_array <= value)
+            self._current_value = count / self.window
             self._is_ready = True
 
         return self._current_value

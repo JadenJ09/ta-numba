@@ -83,7 +83,7 @@ def chaikin_money_flow_numba(high: np.ndarray, low: np.ndarray, close: np.ndarra
 def force_index_numba(close: np.ndarray, volume: np.ndarray, n: int = 13) -> np.ndarray:
     """Force Index: (close - prev_close) * volume, then EMA."""
     fi1 = np.full_like(close, np.nan)
-    # First element is NaN due to (close[0] - close[-1]) being undefined
+    fi1[0] = 0.0  # Prevent NaN propagation in EMA (no price change at bar 0)
     for i in range(1, len(close)):
         fi1[i] = (close[i] - close[i-1]) * volume[i]
     
@@ -217,6 +217,32 @@ volume_price_trend = volume_price_trend_numba
 negative_volume_index = negative_volume_index_numba
 volume_weighted_average_price = volume_weighted_average_price_numba
 volume_weighted_exponential_moving_average = volume_weighted_exponential_moving_average_numba
+
+
+@njit(fastmath=True)
+def volume_ratio_numba(volume: np.ndarray, window: int = 50) -> np.ndarray:
+    """Volume Ratio: volume / SMA(volume, window)."""
+    sma = np.full_like(volume, np.nan)
+    result = np.full_like(volume, np.nan)
+
+    # Calculate rolling SMA of volume
+    running_sum = 0.0
+    for i in range(len(volume)):
+        running_sum += volume[i]
+        if i >= window:
+            running_sum -= volume[i - window]
+        if i >= window - 1:
+            sma[i] = running_sum / window
+
+    # Calculate ratio
+    for i in range(len(volume)):
+        if not np.isnan(sma[i]) and sma[i] != 0.0:
+            result[i] = volume[i] / sma[i]
+
+    return result
+
+
+volume_ratio = volume_ratio_numba
 
 
 # --- Rust backend dispatch (transparent acceleration) ---

@@ -617,5 +617,64 @@ class PPOStreaming(StreamingIndicatorMultiple):
         return self._current_values["ppo"]
 
 
+class PVOStreaming(StreamingIndicatorMultiple):
+    """
+    Streaming Percentage Volume Oscillator (PVO).
+
+    Same as PPO but applied to volume.
+
+    Returns: {
+        'pvo': PVO line,
+        'signal': Signal line,
+        'histogram': PVO histogram
+    }
+    """
+
+    def __init__(
+        self, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9
+    ):
+        super().__init__(slow_period)
+        self.fast_period = fast_period
+        self.slow_period = slow_period
+        self.signal_period = signal_period
+
+        # EMA streamers
+        self.fast_ema = EMAStreaming(fast_period)
+        self.slow_ema = EMAStreaming(slow_period)
+        self.signal_ema = EMAStreaming(signal_period)
+
+        # Initialize current values
+        self._current_values = {"pvo": np.nan, "signal": np.nan, "histogram": np.nan}
+
+    def update(self, volume: float) -> dict:
+        """Update PVO with new volume value."""
+        self._update_count += 1
+
+        # Update EMAs
+        fast_ema = self.fast_ema.update(volume)
+        slow_ema = self.slow_ema.update(volume)
+
+        # Calculate PVO line
+        if self.fast_ema.is_ready and self.slow_ema.is_ready and slow_ema != 0:
+            pvo_line = ((fast_ema - slow_ema) / slow_ema) * 100.0
+            self._current_values["pvo"] = pvo_line
+
+            # Update signal line
+            signal_line = self.signal_ema.update(pvo_line)
+            self._current_values["signal"] = signal_line
+
+            # Calculate histogram
+            if self.signal_ema.is_ready:
+                self._current_values["histogram"] = pvo_line - signal_line
+                self._is_ready = True
+
+        return self._current_values.copy()
+
+    @property
+    def current_value(self) -> float:
+        """Get current PVO line value."""
+        return self._current_values["pvo"]
+
+
 # Import SMAStreaming and EMAStreaming here to avoid circular imports
 from .trend import EMAStreaming, SMAStreaming

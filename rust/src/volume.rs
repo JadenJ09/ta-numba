@@ -245,6 +245,7 @@ pub fn force_index<'py>(
 /// Numpy array with EOM values
 #[pyfunction]
 #[pyo3(name = "ease_of_movement_numba", signature = (high, low, volume, n=14))]
+#[allow(unused_variables)]
 pub fn eom<'py>(
     py: Python<'py>,
     high: PyReadonlyArray1<'py, f64>,
@@ -458,4 +459,34 @@ pub fn vwema<'py>(
     let vwema_values = ema_kernel(&vwap, alpha, true);
 
     Ok(PyArray1::from_vec(py, vwema_values))
+}
+
+/// Volume Ratio: volume / SMA(volume, window)
+///
+/// # Arguments
+/// * `volume` - Volume series
+/// * `window` - SMA window for volume averaging (default: 50)
+///
+/// # Returns
+/// Numpy array with volume ratio values
+#[pyfunction]
+#[pyo3(name = "volume_ratio_numba", signature = (volume, window=50))]
+pub fn volume_ratio<'py>(
+    py: Python<'py>,
+    volume: PyReadonlyArray1<'py, f64>,
+    window: usize,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    let volume_slice = volume.as_slice()?;
+    let len = volume_slice.len();
+
+    let sma = crate::helpers::sma_kernel(volume_slice, window);
+
+    let mut result = vec![f64::NAN; len];
+    for i in 0..len {
+        if !sma[i].is_nan() && sma[i] != 0.0 {
+            result[i] = volume_slice[i] / sma[i];
+        }
+    }
+
+    Ok(PyArray1::from_vec(py, result))
 }

@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use std::collections::VecDeque;
-use super::trend::EMAStreaming;
+use super::trend::{EMAStreaming, SMAStreaming};
 
 // ============================================================================
 // MFI (Money Flow Index)
@@ -499,5 +499,44 @@ impl VWEMAStreaming {
     pub fn reset(&mut self) {
         self.vwap_stream.reset();
         self.ema_stream.reset();
+    }
+}
+
+// ============================================================================
+// Volume Ratio: volume / SMA(volume, window)
+// ============================================================================
+#[pyclass]
+pub struct VolumeRatioStreaming {
+    sma: SMAStreaming,
+    #[allow(dead_code)]
+    window: usize,
+    update_count: usize,
+}
+
+#[pymethods]
+impl VolumeRatioStreaming {
+    #[new]
+    pub fn new(window: usize) -> Self {
+        Self {
+            sma: SMAStreaming::new(window),
+            window,
+            update_count: 0,
+        }
+    }
+
+    pub fn update(&mut self, volume: f64) -> f64 {
+        self.update_count += 1;
+        let sma_value = self.sma.update(volume);
+
+        if sma_value.is_nan() || sma_value == 0.0 {
+            f64::NAN
+        } else {
+            volume / sma_value
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.sma.reset();
+        self.update_count = 0;
     }
 }

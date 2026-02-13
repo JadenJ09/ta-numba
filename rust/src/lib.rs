@@ -8,7 +8,7 @@ mod volume;
 mod others;
 mod streaming;
 
-/// _ta_numba_rs: Rust backend for ta-numba v0.3.0
+/// _ta_numba_rs: Rust backend for ta-numba v0.4.0
 #[pymodule]
 fn _ta_numba_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Trend indicators (bulk)
@@ -60,11 +60,16 @@ fn _ta_numba_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(volume::nvi, m)?)?;
     m.add_function(wrap_pyfunction!(volume::vwap, m)?)?;
     m.add_function(wrap_pyfunction!(volume::vwema, m)?)?;
+    m.add_function(wrap_pyfunction!(volume::volume_ratio, m)?)?;
 
     // Other indicators (bulk)
     m.add_function(wrap_pyfunction!(others::daily_return, m)?)?;
     m.add_function(wrap_pyfunction!(others::daily_log_return, m)?)?;
     m.add_function(wrap_pyfunction!(others::cumulative_return, m)?)?;
+    m.add_function(wrap_pyfunction!(others::compound_log_return, m)?)?;
+    m.add_function(wrap_pyfunction!(others::rolling_zscore, m)?)?;
+    m.add_function(wrap_pyfunction!(others::linear_regression_slope, m)?)?;
+    m.add_function(wrap_pyfunction!(others::rolling_percentile, m)?)?;
 
     // Streaming classes - Trend (11)
     m.add_class::<streaming::SMAStreaming>()?;
@@ -93,12 +98,16 @@ fn _ta_numba_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<streaming::KAMAStreaming>()?;
     m.add_class::<streaming::MomentumStreaming>()?;
 
-    // Streaming classes - Volatility (5)
+    // Streaming classes - Volatility (9)
     m.add_class::<streaming::ATRStreaming>()?;
     m.add_class::<streaming::BollingerBandsStreaming>()?;
     m.add_class::<streaming::KeltnerChannelStreaming>()?;
     m.add_class::<streaming::DonchianChannelStreaming>()?;
     m.add_class::<streaming::UlcerIndexStreaming>()?;
+    m.add_class::<streaming::StandardDeviationStreaming>()?;
+    m.add_class::<streaming::VarianceStreaming>()?;
+    m.add_class::<streaming::RangeStreaming>()?;
+    m.add_class::<streaming::HistoricalVolatilityStreaming>()?;
 
     // Streaming classes - Volume (10)
     m.add_class::<streaming::MFIStreaming>()?;
@@ -111,15 +120,20 @@ fn _ta_numba_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<streaming::NVIStreaming>()?;
     m.add_class::<streaming::VWAPStreaming>()?;
     m.add_class::<streaming::VWEMAStreaming>()?;
+    m.add_class::<streaming::VolumeRatioStreaming>()?;
 
-    // Streaming classes - Others (7)
+    // Streaming classes - Others (11)
     m.add_class::<streaming::DailyReturnStreaming>()?;
     m.add_class::<streaming::DailyLogReturnStreaming>()?;
     m.add_class::<streaming::CumulativeReturnStreaming>()?;
+    m.add_class::<streaming::CompoundLogReturnStreaming>()?;
     m.add_class::<streaming::RollingReturnStreaming>()?;
     m.add_class::<streaming::MaxDrawdownStreaming>()?;
     m.add_class::<streaming::SharpeRatioStreaming>()?;
     m.add_class::<streaming::CalmarRatioStreaming>()?;
+    m.add_class::<streaming::RollingZScoreStreaming>()?;
+    m.add_class::<streaming::LinearRegressionSlopeStreaming>()?;
+    m.add_class::<streaming::RollingPercentileStreaming>()?;
 
     Ok(())
 }

@@ -250,3 +250,201 @@ impl UlcerIndexStreaming {
         self.close_buffer.clear();
     }
 }
+
+// ============================================================================
+// Standard Deviation (rolling, population)
+// ============================================================================
+#[pyclass]
+pub struct StandardDeviationStreaming {
+    window: usize,
+    buffer: VecDeque<f64>,
+}
+
+#[pymethods]
+impl StandardDeviationStreaming {
+    #[new]
+    pub fn new(window: usize) -> Self {
+        Self {
+            window,
+            buffer: VecDeque::with_capacity(window),
+        }
+    }
+
+    pub fn update(&mut self, value: f64) -> f64 {
+        self.buffer.push_back(value);
+
+        if self.buffer.len() > self.window {
+            self.buffer.pop_front();
+        }
+
+        if self.buffer.len() < self.window {
+            f64::NAN
+        } else {
+            let mean: f64 = self.buffer.iter().sum::<f64>() / self.window as f64;
+            let variance: f64 = self.buffer.iter()
+                .map(|x| (x - mean).powi(2))
+                .sum::<f64>() / self.window as f64;
+            variance.sqrt()
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.buffer.clear();
+    }
+}
+
+// ============================================================================
+// Variance (rolling, population)
+// ============================================================================
+#[pyclass]
+pub struct VarianceStreaming {
+    window: usize,
+    buffer: VecDeque<f64>,
+}
+
+#[pymethods]
+impl VarianceStreaming {
+    #[new]
+    pub fn new(window: usize) -> Self {
+        Self {
+            window,
+            buffer: VecDeque::with_capacity(window),
+        }
+    }
+
+    pub fn update(&mut self, value: f64) -> f64 {
+        self.buffer.push_back(value);
+
+        if self.buffer.len() > self.window {
+            self.buffer.pop_front();
+        }
+
+        if self.buffer.len() < self.window {
+            f64::NAN
+        } else {
+            let mean: f64 = self.buffer.iter().sum::<f64>() / self.window as f64;
+            self.buffer.iter()
+                .map(|x| (x - mean).powi(2))
+                .sum::<f64>() / self.window as f64
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.buffer.clear();
+    }
+}
+
+// ============================================================================
+// Range (rolling High - Low range)
+// ============================================================================
+#[pyclass]
+pub struct RangeStreaming {
+    window: usize,
+    high_buffer: VecDeque<f64>,
+    low_buffer: VecDeque<f64>,
+}
+
+#[pymethods]
+impl RangeStreaming {
+    #[new]
+    pub fn new(window: usize) -> Self {
+        Self {
+            window,
+            high_buffer: VecDeque::with_capacity(window),
+            low_buffer: VecDeque::with_capacity(window),
+        }
+    }
+
+    pub fn update(&mut self, high: f64, low: f64) -> f64 {
+        self.high_buffer.push_back(high);
+        self.low_buffer.push_back(low);
+
+        if self.high_buffer.len() > self.window {
+            self.high_buffer.pop_front();
+            self.low_buffer.pop_front();
+        }
+
+        if self.high_buffer.len() < self.window {
+            f64::NAN
+        } else {
+            let max_high = self.high_buffer.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let min_low = self.low_buffer.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            max_high - min_low
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.high_buffer.clear();
+        self.low_buffer.clear();
+    }
+}
+
+// ============================================================================
+// Historical Volatility (annualized rolling std of log returns)
+// ============================================================================
+#[pyclass]
+pub struct HistoricalVolatilityStreaming {
+    window: usize,
+    annualize: bool,
+    prev_value: f64,
+    returns_buffer: VecDeque<f64>,
+    update_count: usize,
+}
+
+#[pymethods]
+impl HistoricalVolatilityStreaming {
+    #[new]
+    #[pyo3(signature = (window=20, annualize=true))]
+    pub fn new(window: usize, annualize: bool) -> Self {
+        Self {
+            window,
+            annualize,
+            prev_value: f64::NAN,
+            returns_buffer: VecDeque::with_capacity(window),
+            update_count: 0,
+        }
+    }
+
+    pub fn update(&mut self, value: f64) -> f64 {
+        self.update_count += 1;
+
+        if self.update_count == 1 {
+            self.prev_value = value;
+            return f64::NAN;
+        }
+
+        if self.prev_value > 0.0 && value > 0.0 {
+            let log_return = (value / self.prev_value).ln();
+            self.returns_buffer.push_back(log_return);
+
+            if self.returns_buffer.len() > self.window {
+                self.returns_buffer.pop_front();
+            }
+        }
+
+        self.prev_value = value;
+
+        if self.returns_buffer.len() < self.window {
+            f64::NAN
+        } else {
+            let n = self.returns_buffer.len() as f64;
+            let mean: f64 = self.returns_buffer.iter().sum::<f64>() / n;
+            let variance: f64 = self.returns_buffer.iter()
+                .map(|r| (r - mean).powi(2))
+                .sum::<f64>() / (n - 1.0);
+            let mut volatility = variance.sqrt();
+
+            if self.annualize {
+                volatility *= (252.0_f64).sqrt();
+            }
+
+            volatility
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.prev_value = f64::NAN;
+        self.returns_buffer.clear();
+        self.update_count = 0;
+    }
+}

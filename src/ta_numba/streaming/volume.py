@@ -428,5 +428,29 @@ class VWEMAStreaming(StreamingIndicator):
         return self._current_value
 
 
+class VolumeRatioStreaming(StreamingIndicator):
+    """
+    Streaming Volume Ratio.
+
+    Volume / SMA(volume, window).
+    """
+
+    def __init__(self, window: int = 50):
+        super().__init__(window)
+        self.sma_stream = SMAStreaming(window)
+
+    def update(self, volume: float) -> float:
+        """Update Volume Ratio with new volume value."""
+        self._update_count += 1
+
+        sma_value = self.sma_stream.update(volume)
+
+        if self.sma_stream.is_ready and sma_value != 0:
+            self._current_value = volume / sma_value
+            self._is_ready = True
+
+        return self._current_value
+
+
 # Import required streamers
-from .trend import EMAStreaming
+from .trend import EMAStreaming, SMAStreaming

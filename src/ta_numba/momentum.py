@@ -190,4 +190,16 @@ ppo = percentage_price_oscillator_numba
 pvo = percentage_volume_oscillator_numba
 
 
+@njit(fastmath=True)
+def momentum_numba(close: np.ndarray, n: int = 10) -> np.ndarray:
+    """Simple Momentum: close[i] - close[i-period]."""
+    result = np.full_like(close, np.nan)
+    for i in range(n, len(close)):
+        result[i] = close[i] - close[i - n]
+    return result
+
+
+momentum = momentum_numba
+
+
 # --- Rust backend dispatch (transparent acceleration) ---

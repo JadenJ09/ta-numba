@@ -40,6 +40,8 @@ from .momentum import MomentumStreaming
 from .momentum import MomentumStreaming as Momentum
 from .momentum import PPOStreaming
 from .momentum import PPOStreaming as PPO
+from .momentum import PVOStreaming
+from .momentum import PVOStreaming as PVO
 from .momentum import ROCStreaming
 from .momentum import ROCStreaming as ROC
 from .momentum import RSIStreaming
@@ -62,8 +64,11 @@ from .others import (
     CumulativeReturnStreaming,
     DailyLogReturnStreaming,
     DailyReturnStreaming,
+    LinearRegressionSlopeStreaming,
     MaxDrawdownStreaming,
+    RollingPercentileStreaming,
     RollingReturnStreaming,
+    RollingZScoreStreaming,
     SharpeRatioStreaming,
     VolatilityStreaming,
 )
@@ -132,6 +137,8 @@ from .volume import VolumePriceTrendStreaming
 from .volume import VolumePriceTrendStreaming as VolumePriceTrend
 from .volume import VWAPStreaming
 from .volume import VWAPStreaming as VWAP
+from .volume import VolumeRatioStreaming
+from .volume import VolumeRatioStreaming as VolumeRatio
 from .volume import VWEMAStreaming
 from .volume import VWEMAStreaming as VWEMA
 
@@ -162,6 +169,7 @@ __all__ = [
     "AwesomeOscillatorStreaming",
     "KAMAStreaming",
     "PPOStreaming",
+    "PVOStreaming",
     "MomentumStreaming",
     # Volatility indicators
     "ATRStreaming",
@@ -184,6 +192,7 @@ __all__ = [
     "NegativeVolumeIndexStreaming",
     "VWAPStreaming",
     "VWEMAStreaming",
+    "VolumeRatioStreaming",
     # Others (returns) indicators
     "DailyReturnStreaming",
     "DailyLogReturnStreaming",
@@ -194,6 +203,9 @@ __all__ = [
     "SharpeRatioStreaming",
     "MaxDrawdownStreaming",
     "CalmarRatioStreaming",
+    "RollingZScoreStreaming",
+    "LinearRegressionSlopeStreaming",
+    "RollingPercentileStreaming",
 ]
 
 
@@ -217,24 +229,29 @@ if _RUST_AVAILABLE:
         TRIXStreaming,
         AroonStreaming,
         ParabolicSARStreaming,
-        # Momentum (11)
+        # Momentum (12)
         RSIStreaming,
         StochasticStreaming,
         WilliamsRStreaming,
         ROCStreaming,
         PPOStreaming,
+        PVOStreaming,
         UltimateOscillatorStreaming,
         StochasticRSIStreaming,
         TSIStreaming,
         AwesomeOscillatorStreaming,
         KAMAStreaming,
         MomentumStreaming,
-        # Volatility (5)
+        # Volatility (9)
         ATRStreaming,
         BBandsStreaming,
         KeltnerChannelStreaming,
         DonchianChannelStreaming,
         UlcerIndexStreaming,
+        StandardDeviationStreaming,
+        VarianceStreaming,
+        RangeStreaming,
+        HistoricalVolatilityStreaming,
         # Volume (10)
         MoneyFlowIndexStreaming,
         AccDistIndexStreaming,
@@ -246,14 +263,19 @@ if _RUST_AVAILABLE:
         NegativeVolumeIndexStreaming,
         VWAPStreaming,
         VWEMAStreaming,
-        # Others (7)
+        VolumeRatioStreaming,
+        # Others (11)
         DailyReturnStreaming,
         DailyLogReturnStreaming,
         CumulativeReturnStreaming,
+        CompoundLogReturnStreaming,
         RollingReturnStreaming,
         MaxDrawdownStreaming,
         SharpeRatioStreaming,
         CalmarRatioStreaming,
+        RollingZScoreStreaming,
+        LinearRegressionSlopeStreaming,
+        RollingPercentileStreaming,
     )
     # Update convenience aliases to point to Rust-backed wrappers
     SMA = SMAStreaming
@@ -272,6 +294,7 @@ if _RUST_AVAILABLE:
     WilliamsR = WilliamsRStreaming
     ROC = ROCStreaming
     PPO = PPOStreaming
+    PVO = PVOStreaming
     UltimateOscillator = UltimateOscillatorStreaming
     StochasticRSI = StochasticRSIStreaming
     TSI = TSIStreaming
@@ -284,6 +307,10 @@ if _RUST_AVAILABLE:
     DonchianChannel = DonchianChannelStreaming
     KeltnerChannel = KeltnerChannelStreaming
     UlcerIndex = UlcerIndexStreaming
+    StandardDeviation = StandardDeviationStreaming
+    Variance = VarianceStreaming
+    TrueRange = RangeStreaming
+    HistoricalVolatility = HistoricalVolatilityStreaming
     MoneyFlowIndex = MoneyFlowIndexStreaming
     AccDistIndex = AccDistIndexStreaming
     OnBalanceVolume = OnBalanceVolumeStreaming
@@ -294,3 +321,4 @@ if _RUST_AVAILABLE:
     NegativeVolumeIndex = NegativeVolumeIndexStreaming
     VWAP = VWAPStreaming
     VWEMA = VWEMAStreaming
+    VolumeRatio = VolumeRatioStreaming

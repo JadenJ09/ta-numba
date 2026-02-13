@@ -4,7 +4,7 @@ import numpy as np
 from numba import njit
 
 # Import helper functions from the same package
-from .helpers import _sma_numba, _true_range_numba, _wilders_ema_adaptive
+from .helpers import _ema_numba_unadjusted, _sma_numba, _true_range_numba, _wilders_ema_adaptive
 
 # ==============================================================================
 # Volatility Indicator Functions
@@ -32,30 +32,33 @@ def bollinger_bands_numba(close: np.ndarray, n: int = 20, k: float = 2.0):
     return upper, middle, lower
 
 @njit
-def keltner_channel_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray, n_ema: int = 20, n_atr: int = 10, k: float = 2.0):
+def keltner_channel_numba(high: np.ndarray, low: np.ndarray, close: np.ndarray, n_ema: int = 20, n_atr: int = 10, k: float = 2.0, original_version: bool = False):
     """
-    Keltner Channel implementation matching ta library's original_version=True.
+    Keltner Channel with modern EMA+ATR (default) or original SMA-based version.
     
-    For original_version=True, ta library uses:
-    - Middle line: SMA(Typical Price, 20) with min_periods=window (so NaN until window reached)
-    - High band: SMA((4*H - 2*L + C)/3, 20) with min_periods=0 (starts immediately)
-    - Low band: SMA((-2*H + 4*L + C)/3, 20) with min_periods=0 (starts immediately)
+    Default (original_version=False): EMA(close) +/- k * ATR  (industry standard, matches streaming Rust)
+    Original (original_version=True): SMA-based (matches ta library original_version=True)
     """
-    # Calculate typical price for middle line
-    typical_price = (high + low + close) / 3.0
-    
-    # Middle line: SMA of typical price with min_periods=window (NaN until window reached)
-    middle_line = _sma_numba(typical_price, n=n_ema, min_periods=n_ema)
-    
-    # High band: SMA of (4*H - 2*L + C)/3 with min_periods=0
-    high_tp = (4.0 * high - 2.0 * low + close) / 3.0
-    high_band = _sma_numba(high_tp, n=n_ema, min_periods=0)
-    
-    # Low band: SMA of (-2*H + 4*L + C)/3 with min_periods=0  
-    low_tp = (-2.0 * high + 4.0 * low + close) / 3.0
-    low_band = _sma_numba(low_tp, n=n_ema, min_periods=0)
-    
-    return high_band, middle_line, low_band
+    if original_version:
+        # Original SMA-based implementation (ta library original_version=True)
+        typical_price = (high + low + close) / 3.0
+        middle_line = _sma_numba(typical_price, n=n_ema, min_periods=n_ema)
+        high_tp = (4.0 * high - 2.0 * low + close) / 3.0
+        high_band = _sma_numba(high_tp, n=n_ema, min_periods=0)
+        low_tp = (-2.0 * high + 4.0 * low + close) / 3.0
+        low_band = _sma_numba(low_tp, n=n_ema, min_periods=0)
+        return high_band, middle_line, low_band
+    else:
+        # Modern EMA + ATR implementation (industry standard)
+        middle = _ema_numba_unadjusted(close, n_ema)
+        atr_values = average_true_range_numba(high, low, close, n_atr)
+        upper = np.full_like(close, np.nan)
+        lower = np.full_like(close, np.nan)
+        for i in range(len(close)):
+            if not np.isnan(middle[i]) and not np.isnan(atr_values[i]):
+                upper[i] = middle[i] + k * atr_values[i]
+                lower[i] = middle[i] - k * atr_values[i]
+        return upper, middle, lower
 
 @njit(fastmath=True)
 def donchian_channel_numba(high: np.ndarray, low: np.ndarray, n: int = 20):
