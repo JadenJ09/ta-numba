@@ -175,6 +175,6 @@ jobs:
           Check your backend: \`python -c \"import ta_numba; print(ta_numba.get_backend())\"\`
 
           ### Performance
-          - Bulk indicators: ~2.3x faster than Numba
-          - Streaming indicators: ~20x faster than Numba
+          - Streaming indicators: **2.6x avg** faster than Numba (up to 13.3x for complex indicators)
+          - Bulk indicators: Numba JIT (optimal for vectorized array ops)
           - 100% API compatible - no code changes needed"
