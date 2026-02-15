@@ -7,8 +7,47 @@
 - **Dependency-Free Installation:** Pure Python with NumPy and Numba — no C compiler needed
 - **Dual Processing Modes:** Bulk (vectorized arrays) + Streaming (O(1) per-tick updates)
 - **Optional Rust Backend (v0.3.0+):** Up to 13x faster streaming via PyO3 — automatic fallback to Numba
-- **45 Streaming + 44 Bulk Indicators:** Trend, Momentum, Volatility, Volume, and more
+- **55 Streaming + 50 Bulk Indicators:** Trend, Momentum, Volatility, Volume, and more
 - **Docker & Cloud Ready:** Reliable installation, optional JIT warmup, constant memory streaming
+
+---
+
+## **What's New in v0.4.0 — New Indicators + Rust Backend Expansion + Bug Fix**
+
+v0.4.0 adds 6 new indicators (both bulk and streaming), extends Rust/PyO3 acceleration to additional streaming classes, and fixes a critical NaN propagation bug in ForceIndex.
+
+### **New Indicators**
+
+| Indicator | Category | Mode | Description |
+|---|---|---|---|
+| **VolumeRatio** | Volume | Bulk + Streaming | `volume / SMA(volume, window)` — detects volume anomalies |
+| **RollingZScore** | Others/Statistics | Bulk + Streaming | `(x - rolling_mean) / rolling_std` — stationarity transform |
+| **LinearRegressionSlope** | Others/Statistics | Bulk + Streaming | Rolling least-squares slope for trend measurement |
+| **RollingPercentile** | Others/Statistics | Bulk + Streaming | Fraction of window values <= current value |
+| **PVO** | Momentum | Streaming | Percentage Volume Oscillator — was bulk-only, now also streaming with Rust |
+| **Momentum** | Momentum | Bulk + Streaming | Simple momentum: `close[i] - close[i-period]` |
+
+### **Rust Backend Extended**
+
+These streaming indicators already existed in Numba but now have Rust/PyO3 acceleration:
+
+- StandardDeviation, Variance, TrueRange (Volatility)
+- HistoricalVolatility (Volatility)
+- CompoundLogReturn (Others)
+- PVO (Momentum)
+- VolumeRatio (Volume)
+
+### **Bug Fix**
+
+- **ForceIndex**: Fixed NaN propagation bug where `fi1[0] = NaN` caused the EMA to produce NaN forever. Now `fi1[0] = 0.0`.
+
+### **Updated Counts**
+
+| | v0.3.0 | v0.4.0 | Change |
+|---|---|---|---|
+| Streaming indicators | 45 | 55 | +10 |
+| Bulk indicators | 44 | 50 | +6 |
+| Rust-accelerated streaming | 42 | 53 | +11 |
 
 ---
 
@@ -27,7 +66,7 @@ ta-numba uses each backend where it performs best:
 
 ### **Streaming Benchmark: Rust vs Numba**
 
-10,000 price ticks, 10 iterations, median timing. Full results across 45 streaming indicators:
+10,000 price ticks, 10 iterations, median timing. Results across streaming indicators (v0.3.0 baseline):
 
 <details open>
 <summary><strong>Top Rust Wins (Complex Indicators)</strong></summary>
@@ -266,21 +305,21 @@ rsi_values = momentum.rsi(close_prices, window=14)
 
 ## **Available Indicators**
 
-### **Streaming Indicators (45)**
+### **Streaming Indicators (55)**
 
 Real-time indicators with O(1) updates and constant memory usage:
 
 **Trend (11):** SMA, EMA, WMA, MACD, ADX, TRIX, CCI, DPO, Aroon, ParabolicSAR, VortexIndicator
 
-**Momentum (10):** RSI, Stochastic, StochasticRSI, WilliamsR, TSI, UltimateOscillator, AwesomeOscillator, KAMA, PPO, ROC
+**Momentum (12):** RSI, Stochastic, StochasticRSI, WilliamsR, TSI, UltimateOscillator, AwesomeOscillator, KAMA, PPO, PVO, ROC, Momentum
 
 **Volatility (9):** ATR, BollingerBands, KeltnerChannel, DonchianChannel, StandardDeviation, Variance, TrueRange, HistoricalVolatility, UlcerIndex
 
-**Volume (10):** MoneyFlowIndex, AccDistIndex, OnBalanceVolume, ChaikinMoneyFlow, ForceIndex, EaseOfMovement, VolumePriceTrend, NegativeVolumeIndex, VWAP, VWEMA
+**Volume (11):** MoneyFlowIndex, AccDistIndex, OnBalanceVolume, ChaikinMoneyFlow, ForceIndex, EaseOfMovement, VolumePriceTrend, NegativeVolumeIndex, VWAP, VWEMA, VolumeRatio
 
-**Others (5):** DailyReturn, DailyLogReturn, CompoundLogReturn, CumulativeReturn, SharpeRatio, MaxDrawdown, Volatility
+**Others (12):** DailyReturn, DailyLogReturn, CompoundLogReturn, CumulativeReturn, RollingReturn, Volatility, SharpeRatio, MaxDrawdown, CalmarRatio, RollingZScore, LinearRegressionSlope, RollingPercentile
 
-### **Bulk Processing Indicators (44)**
+### **Bulk Processing Indicators (50)**
 
 All functions accept NumPy arrays for maximum performance.
 
@@ -292,9 +331,9 @@ All functions accept NumPy arrays for maximum performance.
 </details>
 
 <details>
-<summary><strong>Momentum (11)</strong></summary>
+<summary><strong>Momentum (12)</strong></summary>
 
-`rsi`, `stochrsi`, `tsi`, `ultimate_oscillator`, `stoch`, `williams_r`, `awesome_oscillator`, `kama`, `roc`, `ppo`, `pvo`
+`rsi`, `stochrsi`, `tsi`, `ultimate_oscillator`, `stoch`, `williams_r`, `awesome_oscillator`, `kama`, `roc`, `ppo`, `pvo`, `momentum`
 
 </details>
 
@@ -306,16 +345,16 @@ All functions accept NumPy arrays for maximum performance.
 </details>
 
 <details>
-<summary><strong>Volume (10)</strong></summary>
+<summary><strong>Volume (11)</strong></summary>
 
-`money_flow_index`, `acc_dist_index`, `on_balance_volume`, `chaikin_money_flow`, `force_index`, `ease_of_movement`, `volume_price_trend`, `negative_volume_index`, `volume_weighted_average_price`, `volume_weighted_exponential_moving_average`
+`money_flow_index`, `acc_dist_index`, `on_balance_volume`, `chaikin_money_flow`, `force_index`, `ease_of_movement`, `volume_price_trend`, `negative_volume_index`, `volume_weighted_average_price`, `volume_weighted_exponential_moving_average`, `volume_ratio`
 
 </details>
 
 <details>
-<summary><strong>Others (4)</strong></summary>
+<summary><strong>Others (7)</strong></summary>
 
-`daily_return`, `daily_log_return`, `cumulative_return`, `compound_log_return`
+`daily_return`, `daily_log_return`, `cumulative_return`, `compound_log_return`, `rolling_zscore`, `linear_regression_slope`, `rolling_percentile`
 
 </details>
 
@@ -392,6 +431,26 @@ Average speedup vs ta library: **857x**
 </details>
 
 ## **Migration Guide**
+
+### **From v0.3.x to v0.4.0**
+
+No code changes required. New indicators are additive. The ForceIndex bug fix is automatic:
+
+```python
+# New indicators available immediately
+import ta_numba.stream as stream
+vol_ratio = stream.VolumeRatio(window=50)
+zscore = stream.RollingZScore(window=20)
+slope = stream.LinearRegressionSlope(window=14)
+pctl = stream.RollingPercentile(window=120)
+pvo = stream.PVO()
+mom = stream.Momentum(window=10)
+
+# Bulk functions
+import ta_numba.bulk as bulk
+vr = bulk.volume.volume_ratio(volume, window=50)
+zs = bulk.others.rolling_zscore(close, window=20)
+```
 
 ### **From v0.2.x to v0.3.0**
 
@@ -504,7 +563,7 @@ This library builds upon the excellent work of several projects:
 - **[Technical Analysis Library (ta)](https://github.com/bukosabino/ta)** by Dario Lopez Padial - API design and calculation logic foundation
 - **[Numba](https://numba.pydata.org/)** - JIT compilation technology that makes the performance possible
 - **[NumPy](https://numpy.org/)** - Fundamental array operations and mathematical functions
-- **[PyO3](https://pyo3.rs/)** - Rust/Python bindings powering the v0.3.0 backend
+- **[PyO3](https://pyo3.rs/)** - Rust/Python bindings powering the streaming backend (v0.3.0+)
 
 ## **Mathematical Documentation**
 

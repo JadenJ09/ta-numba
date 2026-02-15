@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-13
+
+### Added
+- **VolumeRatio** (Volume): `volume / SMA(volume, window)` — bulk and streaming, detects volume anomalies
+- **RollingZScore** (Others/Statistics): `(x - rolling_mean) / rolling_std` — bulk and streaming, stationarity transform
+- **LinearRegressionSlope** (Others/Statistics): Rolling least-squares slope — bulk and streaming, trend measurement
+- **RollingPercentile** (Others/Statistics): Fraction of window values <= current value — bulk and streaming
+- **PVOStreaming** (Momentum): Percentage Volume Oscillator — was bulk-only, now also available as streaming with Rust acceleration
+- **MomentumStreaming** (Momentum): Simple momentum `close[i] - close[i-period]` — bulk and streaming
+
+### Changed
+- **Rust backend extended**: Added Rust/PyO3 acceleration for streaming indicators that previously only had Numba implementations:
+  - StandardDeviation, Variance, TrueRange (Volatility)
+  - HistoricalVolatility (Volatility)
+  - CompoundLogReturn (Others)
+  - PVO (Momentum)
+  - VolumeRatio (Volume)
+- Streaming indicator count: 45 → 55 (11 Trend, 12 Momentum, 9 Volatility, 11 Volume, 12 Others)
+- Bulk indicator count: 44 → 50 (15 Trend, 12 Momentum, 5 Volatility, 11 Volume, 7 Others)
+- Rust-accelerated streaming classes: 42 → 53
+
+### Fixed
+- **ForceIndex NaN propagation**: `fi1[0]` was `NaN`, causing the subsequent EMA to produce `NaN` for all values. Now initialized to `0.0`.
+
 ## [0.3.0] - 2026-02-12
 
 ### Added

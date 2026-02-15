@@ -21,7 +21,15 @@ Thank you for your interest in contributing to ta-numba! This document provides 
    pip install -e .[dev]
    ```
 
-3. **Run tests**
+3. **Build Rust extension (optional, for streaming acceleration)**
+
+   ```bash
+   # Requires Rust toolchain from https://rustup.rs
+   pip install maturin
+   maturin develop --release
+   ```
+
+4. **Run tests**
    ```bash
    pytest tests/
    ```
@@ -38,8 +46,9 @@ Thank you for your interest in contributing to ta-numba! This document provides 
 ### 📈 New Indicators
 
 - Follow existing indicator patterns in `src/ta_numba/`
-- Implement both bulk and streaming versions
-- Include comprehensive tests
+- Implement bulk (Numba), Python streaming, and optionally Rust streaming versions
+- Ensure all quadrants produce identical numerical results (quadrant parity)
+- Include comprehensive tests (bulk, streaming, cross-quadrant parity)
 - Document mathematical formulas
 - Ensure 1-to-1 compatibility with reference implementations
 
