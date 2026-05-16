@@ -3,13 +3,13 @@ name: Codex Review Gate
 on:
   pull_request:
     branches: [main]
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
   issue_comment:
     types: [created]
 
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: read
   statuses: write
 
@@ -27,9 +27,11 @@ jobs:
       - name: Require Codex review on current PR head
         uses: actions/github-script@v7
         env:
-          CODEX_REVIEW_WAIT_SECONDS: "600"
+          CODEX_REVIEW_INITIAL_WAIT_SECONDS: "300"
+          CODEX_REVIEW_RECOVERY_WAIT_SECONDS: "300"
           CODEX_REVIEW_POLL_SECONDS: "15"
         with:
+          github-token: ${{ secrets.CODEX_REVIEW_PAT || github.token }}
           script: |
             let pr = context.payload.pull_request;
             if (!pr && context.eventName === "issue_comment") {
@@ -63,9 +65,9 @@ jobs:
             const headSha = pr.head.sha;
             const headRepoOwner = pr.head.repo?.owner?.login || owner;
             const headRepoName = pr.head.repo?.name || repo;
-            const waitSeconds = Number(process.env.CODEX_REVIEW_WAIT_SECONDS || "600");
+            const initialWaitSeconds = Number(process.env.CODEX_REVIEW_INITIAL_WAIT_SECONDS || "300");
+            const recoveryWaitSeconds = Number(process.env.CODEX_REVIEW_RECOVERY_WAIT_SECONDS || "300");
             const pollSeconds = Number(process.env.CODEX_REVIEW_POLL_SECONDS || "15");
-            const deadlineMs = Date.now() + waitSeconds * 1000;
             const codexBotLogins = new Set([
               "chatgpt-codex-connector[bot]",
               "chatgpt-codex-connector",
@@ -91,6 +93,40 @@ jobs:
               return codexBodyPattern.test(body || "");
             }
 
+            function sleep(ms) {
+              return new Promise((resolve) => setTimeout(resolve, ms));
+            }
+
+            async function createSuccessStatus(signal) {
+              core.notice(signal);
+              await github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: headSha,
+                state: "success",
+                context: "Codex Review Gate",
+                description: "Codex review verified for current PR head",
+                target_url: pr.html_url,
+              });
+            }
+
+            async function listIssueComments() {
+              return await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: pull_number,
+                per_page: 100,
+              });
+            }
+
+            async function findExistingCodexReviewRequest() {
+              const comments = await listIssueComments();
+              return comments
+                .filter((item) => /@codex\s+review/i.test(item.body || ""))
+                .filter((item) => new Date(item.created_at) >= headCommitTime)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            }
+
             async function findCodexSignal() {
               const reviews = await github.paginate(github.rest.pulls.listReviews, {
                 owner,
@@ -111,12 +147,7 @@ jobs:
                 return `Codex review ${review.id} on ${headSha.slice(0, 12)} at ${review.submitted_at}`;
               }
 
-              const comments = await github.paginate(github.rest.issues.listComments, {
-                owner,
-                repo,
-                issue_number: pull_number,
-                per_page: 100,
-              });
+              const comments = await listIssueComments();
               const comment = comments
                 .filter((item) => isCodexBot(item))
                 .filter((item) => bodyLooksLikeCodexReview(item.body))
@@ -126,34 +157,77 @@ jobs:
                 return `Codex comment ${comment.id} after ${headSha.slice(0, 12)} at ${comment.created_at}`;
               }
 
+              const reactions = await github.paginate(github.rest.reactions.listForIssue, {
+                owner,
+                repo,
+                issue_number: pull_number,
+                per_page: 100,
+              });
+              const reaction = reactions
+                .filter((item) => isCodexBot(item))
+                .filter((item) => item.content === "+1")
+                .filter((item) => new Date(item.created_at) >= headCommitTime)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              if (reaction) {
+                return `Codex +1 reaction ${reaction.id} after ${headSha.slice(0, 12)} at ${reaction.created_at}`;
+              }
+
               return null;
             }
 
-            let attempts = 0;
-            while (Date.now() < deadlineMs) {
-              attempts += 1;
-              const signal = await findCodexSignal();
-              if (signal) {
-                core.notice(signal);
-                await github.rest.repos.createCommitStatus({
-                  owner,
-                  repo,
-                  sha: headSha,
-                  state: "success",
-                  context: "Codex Review Gate",
-                  description: "Codex review verified for current PR head",
-                  target_url: pr.html_url,
-                });
-                return;
+            async function waitForCodexSignal(waitSeconds, phase) {
+              const deadlineMs = Date.now() + waitSeconds * 1000;
+              let attempts = 0;
+              while (Date.now() < deadlineMs) {
+                attempts += 1;
+                const signal = await findCodexSignal();
+                if (signal) {
+                  return signal;
+                }
+                core.info(
+                  `Waiting for Codex review on PR #${pull_number} head ${headSha.slice(0, 12)} ` +
+                    `(${phase} attempt ${attempts}, next poll in ${pollSeconds}s)`,
+                );
+                await sleep(pollSeconds * 1000);
               }
-              core.info(
-                `Waiting for Codex review on PR #${pull_number} head ${headSha.slice(0, 12)} ` +
-                  `(attempt ${attempts}, next poll in ${pollSeconds}s)`,
-              );
-              await new Promise((resolve) => setTimeout(resolve, pollSeconds * 1000));
+              return null;
             }
 
-            const failureDescription = `No Codex review found after ${waitSeconds}s`;
+            let signal = await waitForCodexSignal(initialWaitSeconds, "initial");
+            if (signal) {
+              await createSuccessStatus(signal);
+              return;
+            }
+
+            const existingRequest = await findExistingCodexReviewRequest();
+            if (existingRequest) {
+              core.notice(
+                `Codex recovery request already present in comment ${existingRequest.id}; ` +
+                  `continuing recovery polling.`,
+              );
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pull_number,
+                body:
+                  `@codex review\n\n` +
+                  `Codex Review Gate recovery: no Codex signal found for current head ` +
+                  `${headSha} after ${initialWaitSeconds}s.`,
+              });
+              core.notice(
+                `Posted @codex review recovery request after ${initialWaitSeconds}s without a Codex signal.`,
+              );
+            }
+
+            signal = await waitForCodexSignal(recoveryWaitSeconds, "recovery");
+            if (signal) {
+              await createSuccessStatus(signal);
+              return;
+            }
+
+            const totalWaitSeconds = initialWaitSeconds + recoveryWaitSeconds;
+            const failureDescription = `No Codex review found after recovery`;
             await github.rest.repos.createCommitStatus({
               owner,
               repo,
@@ -164,7 +238,7 @@ jobs:
               target_url: pr.html_url,
             });
             core.setFailed(
-              `No Codex review/comment found for PR #${pull_number} head ${headSha} ` +
-                `after ${waitSeconds}s. Confirm Codex code review is enabled for this repo, ` +
-                `or comment "@codex review" and rerun this check.`,
+              `No Codex review/comment/reaction found for PR #${pull_number} head ${headSha} ` +
+                `after ${totalWaitSeconds}s, including one @codex review recovery request. ` +
+                `Confirm Codex code review is enabled for this repo.`,
             );
