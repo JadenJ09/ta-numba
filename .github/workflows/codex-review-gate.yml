@@ -144,6 +144,7 @@ jobs:
                 ".codex",
                 ".gitignore",
                 ".github/workflows/codex-review-gate.yml",
+                ".github/workflows/codex-bot-dismiss-docs-only.yml",  // v5.3.42 fix · companion self-deploy bypass
               ]);
               const allowedPrefixes = [
                 // CI/ops state (agent memory, session files, locks)
