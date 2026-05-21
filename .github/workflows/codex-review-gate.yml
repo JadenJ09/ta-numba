@@ -62,8 +62,8 @@ jobs:
           CODEX_REVIEW_RECOVERY_WAIT_SECONDS: "300"
           CODEX_REVIEW_POLL_SECONDS: "15"
           # REPO_TYPE: Set to "TIER_VAULT" | "TIER_FRAMEWORK" | "TIER_SUBMODULE"
-          # sed-replace during deployment:  sed -i 's/TIER_SUBMODULE/TIER_SUBMODULE/' ...
-          CODEX_GATE_REPO_TIER: "TIER_SUBMODULE"
+          # sed-replace during deployment:  sed -i 's/REPO_TYPE_PLACEHOLDER/TIER_SUBMODULE/' ...
+          CODEX_GATE_REPO_TIER: "REPO_TYPE_PLACEHOLDER"
         with:
           github-token: ${{ secrets.CODEX_REVIEW_PAT || github.token }}
           script: |
@@ -152,7 +152,11 @@ jobs:
                 ".locks/",
               ];
               // Universal doc-ish extensions (config, markup, data)
-              const docishExtension = /\.(css|html|json|jsonl|lock|md|txt|ya?ml)$/i;
+              // v5.3.42 fix: yaml/yml REMOVED · all yaml PRs receive Codex review
+              // Rationale: workflow yaml (.github/workflows/*.yml) contains inline JS · helm values yaml is config-only
+              // CEO Approach A (2026-05-21): conservative · ALL yaml = review · safer default
+              // Self-deploys (codex-review-gate.yml + codex-bot-dismiss-docs-only.yml) still bypass via allowedExact
+              const docishExtension = /\.(css|html|json|jsonl|lock|md|txt)$/i;
               // Dashboard static output
               const dashboardPrefix = "_dashboard/";
 
