@@ -62,8 +62,8 @@ jobs:
           CODEX_REVIEW_RECOVERY_WAIT_SECONDS: "300"
           CODEX_REVIEW_POLL_SECONDS: "15"
           # REPO_TYPE: Set to "TIER_VAULT" | "TIER_FRAMEWORK" | "TIER_SUBMODULE"
-          # sed-replace during deployment:  sed -i 's/REPO_TYPE_PLACEHOLDER/TIER_SUBMODULE/' ...
-          CODEX_GATE_REPO_TIER: "REPO_TYPE_PLACEHOLDER"
+          # sed-replace during deployment:  sed -i 's/TIER_SUBMODULE/TIER_SUBMODULE/' ...
+          CODEX_GATE_REPO_TIER: "TIER_SUBMODULE"
         with:
           github-token: ${{ secrets.CODEX_REVIEW_PAT || github.token }}
           script: |
