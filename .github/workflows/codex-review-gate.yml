@@ -1,16 +1,45 @@
+# ============================================================
+# Trade-Matrix-Labs · Canonical Codex Review Gate Workflow
+# Version: v2.1 (2026-05-21)
+# Source: JadenJ09/tm-vault · backport + docs-only bypass added
+#
+# DEPLOYMENT INSTRUCTIONS
+# ----------------------
+# 1. Copy this file to .github/workflows/codex-review-gate.yml
+# 2. Customize the REPO_TYPE section of isDocsOnlyPath() below
+#    (search for "REPO_TYPE:" comment markers)
+# 3. Set CODEX_REVIEW_PAT secret on the repo if Codex bot uses
+#    a different token than GITHUB_TOKEN (usually not needed)
+#
+# CUSTOMIZATION GUIDE
+# -------------------
+# Three repo tiers define which paths are doc-only (bypass review):
+#
+#   TIER_VAULT     → tm-vault (deployed; reference baseline)
+#   TIER_FRAMEWORK → lmwpf, meta-repo (trade-matrix-mvp)
+#   TIER_SUBMODULE → tm-ta, tm-sim, tm-eval, tm-backtest,
+#                    tm-engine, qmark, portfolio, tm-terminal,
+#                    trade-matrix-website, ta-numba
+#
+# Code files (.py .rs .ts .js .tsx .sh etc.) are NEVER bypassed
+# in TIER_SUBMODULE repos. Only universal doc patterns apply.
+# ============================================================
+
 name: Codex Review Gate
 
 on:
   pull_request:
     branches: [main]
-    types: [opened, reopened, ready_for_review, synchronize]
+    # NOTE: "labeled" trigger enables doc-bypass re-evaluation after
+    # a human adds the "docs-only" label post-PR open.
+    types: [opened, reopened, ready_for_review, synchronize, labeled]
   issue_comment:
     types: [created]
 
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
   statuses: write
 
 concurrency:
@@ -27,12 +56,20 @@ jobs:
       - name: Require Codex review on current PR head
         uses: actions/github-script@v7
         env:
+          # Phase 1: wait before posting recovery @codex review comment
           CODEX_REVIEW_INITIAL_WAIT_SECONDS: "300"
+          # Phase 2: wait after posting recovery comment
           CODEX_REVIEW_RECOVERY_WAIT_SECONDS: "300"
           CODEX_REVIEW_POLL_SECONDS: "15"
+          # REPO_TYPE: Set to "TIER_VAULT" | "TIER_FRAMEWORK" | "TIER_SUBMODULE"
+          # sed-replace during deployment:  sed -i 's/TIER_SUBMODULE/TIER_SUBMODULE/' ...
+          CODEX_GATE_REPO_TIER: "TIER_SUBMODULE"
         with:
           github-token: ${{ secrets.CODEX_REVIEW_PAT || github.token }}
           script: |
+            // -------------------------------------------------------
+            // SECTION 1: Event routing
+            // -------------------------------------------------------
             let pr = context.payload.pull_request;
             if (!pr && context.eventName === "issue_comment") {
               const issue = context.payload.issue;
@@ -59,6 +96,9 @@ jobs:
               return;
             }
 
+            // -------------------------------------------------------
+            // SECTION 2: Core constants
+            // -------------------------------------------------------
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const pull_number = pr.number;
@@ -68,6 +108,8 @@ jobs:
             const initialWaitSeconds = Number(process.env.CODEX_REVIEW_INITIAL_WAIT_SECONDS || "300");
             const recoveryWaitSeconds = Number(process.env.CODEX_REVIEW_RECOVERY_WAIT_SECONDS || "300");
             const pollSeconds = Number(process.env.CODEX_REVIEW_POLL_SECONDS || "15");
+            const repoTier = process.env.CODEX_GATE_REPO_TIER || "TIER_SUBMODULE";
+
             const codexBotLogins = new Set([
               "chatgpt-codex-connector[bot]",
               "chatgpt-codex-connector",
@@ -85,6 +127,175 @@ jobs:
                 pr.updated_at,
             );
 
+            // -------------------------------------------------------
+            // SECTION 3: Docs-only bypass logic
+            //
+            // A file is considered "doc-only" if it matches the
+            // universal allowlist OR the tier-specific allowlist.
+            //
+            // CODE files (.py .rs .ts .js .tsx .sh etc.) are NEVER
+            // considered doc-only in TIER_SUBMODULE repos; the code
+            // extension blocklist takes priority over prefix rules.
+            // -------------------------------------------------------
+
+            // Universal: applies to ALL repo tiers
+            function isUniversalDocPath(filename) {
+              const allowedExact = new Set([
+                ".codex",
+                ".gitignore",
+                ".github/workflows/codex-review-gate.yml",
+              ]);
+              const allowedPrefixes = [
+                // CI/ops state (agent memory, session files, locks)
+                ".agent_state/sessions/current/",
+                ".claude/agent-memory/",
+                ".locks/",
+              ];
+              // Universal doc-ish extensions (config, markup, data)
+              const docishExtension = /\.(css|html|json|jsonl|lock|md|txt|ya?ml)$/i;
+              // Dashboard static output
+              const dashboardPrefix = "_dashboard/";
+
+              return (
+                allowedExact.has(filename) ||
+                allowedPrefixes.some((p) => filename.startsWith(p)) ||
+                filename.startsWith(dashboardPrefix) ||
+                docishExtension.test(filename)
+              );
+            }
+
+            // Code extensions that are ALWAYS subject to review
+            // (takes priority over prefix allowlist in TIER_SUBMODULE)
+            const codeExtPattern = /\.(py|rs|ts|js|tsx|jsx|mjs|cjs|rb|go|c|cpp|cc|h|hpp|kt|swift|pyx|sh|bash|zsh|fish|pl|lua|java|scala|zig|nim|v|d|f90|f95)$/i;
+
+            function isCodeFile(filename) {
+              return codeExtPattern.test(filename);
+            }
+
+            // TIER_VAULT: vault repo allowlist (reference baseline)
+            // Matches tm-vault deployed logic exactly.
+            function isVaultDocPath(filename) {
+              const vaultPrefixes = [
+                ".obsidian/",
+                "_control/",
+                "raw/",
+                "wiki/",
+              ];
+              return (
+                filename.startsWith("_hot_") ||
+                vaultPrefixes.some((p) => filename.startsWith(p)) ||
+                isUniversalDocPath(filename)
+              );
+            }
+
+            // TIER_FRAMEWORK: lmwpf, meta-repo
+            // Most paths are submodule-mediated or doc/config heavy.
+            // Submodule pointer files (.gitmodules, pointer SHAs) are
+            // YAML/JSON type and caught by universal docishExtension.
+            function isFrameworkDocPath(filename) {
+              const frameworkPrefixes = [
+                // LMWPF doc artifacts and release notes
+                "business/",
+                "marketing/",
+                "legal/",
+                "docs/",
+                // LMWPF plugin folder (manifests + doc, not code)
+                // NOTE: plugin/*.py code files will still require review
+                // via isCodeFile() override below — only .md/.yml/.json exempt
+                "plugin/",
+                // Vault submodule and TM submodule pointer paths
+                "vault/wiki/",
+                "vault/raw/",
+                "LMWPF/",
+                // TM submodule pointers in meta-repo are gitmodule entries,
+                // not code. The actual submodule contents are reviewed
+                // independently in their own repos.
+                "tm-ta/",
+                "tm-sim/",
+                "tm-eval/",
+                "tm-backtest/",
+                "tm-engine/",
+                "qmark/",
+                "portfolio/",
+                "tm-terminal/",
+                "trade-matrix-website/",
+                "ta-numba/",
+              ];
+              // Code files inside framework prefixes still require review
+              if (isCodeFile(filename)) {
+                return false;
+              }
+              return (
+                frameworkPrefixes.some((p) => filename.startsWith(p)) ||
+                isUniversalDocPath(filename)
+              );
+            }
+
+            // TIER_SUBMODULE: tm-ta, tm-sim, tm-eval, tm-backtest,
+            // tm-engine, qmark, portfolio, tm-terminal,
+            // trade-matrix-website, ta-numba
+            // Code-heavy repos; STRICT review for all code extensions.
+            // Only universal doc allowlist (md/yml/json/etc.) bypasses.
+            function isSubmoduleDocPath(filename) {
+              // Code files NEVER bypass in submodule repos
+              if (isCodeFile(filename)) {
+                return false;
+              }
+              return isUniversalDocPath(filename);
+            }
+
+            // Route to correct tier function
+            function isDocsOnlyPath(filename) {
+              switch (repoTier) {
+                case "TIER_VAULT":     return isVaultDocPath(filename);
+                case "TIER_FRAMEWORK": return isFrameworkDocPath(filename);
+                case "TIER_SUBMODULE": return isSubmoduleDocPath(filename);
+                default:
+                  core.warning(`Unknown CODEX_GATE_REPO_TIER="${repoTier}"; defaulting to TIER_SUBMODULE (strict)`);
+                  return isSubmoduleDocPath(filename);
+              }
+            }
+
+            // -------------------------------------------------------
+            // SECTION 4: Docs-only bypass attempt
+            // -------------------------------------------------------
+            async function maybeBypassDocsOnly() {
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner,
+                repo,
+                pull_number,
+                per_page: 100,
+              });
+              const filenames = files.map((f) => f.filename);
+              const blocked = filenames.filter((fn) => !isDocsOnlyPath(fn));
+
+              if (blocked.length > 0) {
+                core.notice(
+                  `Docs-only Codex bypass NOT applied (${repoTier}); non-doc files: ` +
+                    blocked.slice(0, 10).join(", "),
+                );
+                return false;
+              }
+
+              core.notice(
+                `Docs-only Codex bypass accepted (${repoTier}); ` +
+                  `${filenames.length} file(s) all match allowlist.`,
+              );
+              await github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: headSha,
+                state: "success",
+                context: "Codex Review Gate",
+                description: `Docs-only bypass (${repoTier})`,
+                target_url: pr.html_url,
+              });
+              return true;
+            }
+
+            // -------------------------------------------------------
+            // SECTION 5: Codex signal detection
+            // -------------------------------------------------------
             function isCodexBot(item) {
               return codexBotLogins.has(item.user?.login || "");
             }
@@ -128,6 +339,7 @@ jobs:
             }
 
             async function findCodexSignal() {
+              // Signal type 1: formal PR review from Codex bot
               const reviews = await github.paginate(github.rest.pulls.listReviews, {
                 owner,
                 repo,
@@ -147,6 +359,7 @@ jobs:
                 return `Codex review ${review.id} on ${headSha.slice(0, 12)} at ${review.submitted_at}`;
               }
 
+              // Signal type 2: inline comment from Codex bot
               const comments = await listIssueComments();
               const comment = comments
                 .filter((item) => isCodexBot(item))
@@ -157,6 +370,7 @@ jobs:
                 return `Codex comment ${comment.id} after ${headSha.slice(0, 12)} at ${comment.created_at}`;
               }
 
+              // Signal type 3: +1 reaction from Codex bot (approval shorthand)
               const reactions = await github.paginate(github.rest.reactions.listForIssue, {
                 owner,
                 repo,
@@ -193,12 +407,23 @@ jobs:
               return null;
             }
 
+            // -------------------------------------------------------
+            // SECTION 6: Main gate logic
+            // -------------------------------------------------------
+
+            // Early exit: docs-only PR → bypass Codex review gate
+            if (await maybeBypassDocsOnly()) {
+              return;
+            }
+
+            // Phase 1: initial wait for Codex signal
             let signal = await waitForCodexSignal(initialWaitSeconds, "initial");
             if (signal) {
               await createSuccessStatus(signal);
               return;
             }
 
+            // Phase 2: post @codex review recovery comment, then wait again
             const existingRequest = await findExistingCodexReviewRequest();
             if (existingRequest) {
               core.notice(
@@ -226,19 +451,20 @@ jobs:
               return;
             }
 
+            // Final failure
             const totalWaitSeconds = initialWaitSeconds + recoveryWaitSeconds;
-            const failureDescription = `No Codex review found after recovery`;
             await github.rest.repos.createCommitStatus({
               owner,
               repo,
               sha: headSha,
               state: "failure",
               context: "Codex Review Gate",
-              description: failureDescription,
+              description: `No Codex review found after recovery (${repoTier})`,
               target_url: pr.html_url,
             });
             core.setFailed(
               `No Codex review/comment/reaction found for PR #${pull_number} head ${headSha} ` +
-                `after ${totalWaitSeconds}s, including one @codex review recovery request. ` +
-                `Confirm Codex code review is enabled for this repo.`,
+                `after ${totalWaitSeconds}s including one @codex review recovery request. ` +
+                `Confirm Codex code review is enabled for this repo, ` +
+                `or comment "@codex review" to manually re-trigger.`,
             );
