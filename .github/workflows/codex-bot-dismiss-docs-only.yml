@@ -95,7 +95,10 @@ jobs:
                 ".claude/agent-memory/",
                 ".locks/",
               ];
-              const docishExtension = /\.(css|html|json|jsonl|lock|md|txt|ya?ml)$/i;
+              // v5.3.42 fix: yaml/yml REMOVED from docishExtension · all yaml PRs receive Codex review
+              // (PR #126 lesson · workflow yaml contains inline JS code · CEO Approach A · ALL yaml = review)
+              // .codex-review-gate.yml + .codex-bot-dismiss-docs-only.yml self-deploys still bypass via allowedExact
+              const docishExtension = /\.(css|html|json|jsonl|lock|md|txt)$/i;
               const dashboardPrefix = "_dashboard/";
 
               return (
@@ -115,16 +118,22 @@ jobs:
               );
             }
 
+            // v5.3.42 fix: mirror canonical_codex_review_gate.yml isFrameworkDocPath
+            // (v5.3.33-34 cascade · isCodeFile guard preserves code review on framework repo Python/Rust files)
             function isFrameworkDocPath(filename) {
               const frameworkPrefixes = [
-                ".claude/", "LMWPF/", "vault/", "plugin/",
-                "scripts/", "docs/", "tests/",
+                "business/", "marketing/", "legal/", "docs/",
+                "plugin/",
+                "vault/wiki/", "vault/raw/", "LMWPF/",
+                "tm-ta/", "tm-sim/", "tm-eval/", "tm-backtest/", "tm-engine/",
+                "qmark/", "portfolio/", "tm-terminal/",
+                "trade-matrix-website/", "ta-numba/",
               ];
-              const frameworkExact = new Set([
-                "CLAUDE.md", "README.md", "AGENTS.md", "CHANGELOG.md",
-              ]);
+              // v5.3.42 fix: isCodeFile guard FIRST · code files inside framework prefixes still require review
+              if (isCodeFile(filename)) {
+                return false;
+              }
               return (
-                frameworkExact.has(filename) ||
                 frameworkPrefixes.some((p) => filename.startsWith(p)) ||
                 isUniversalDocPath(filename)
               );
