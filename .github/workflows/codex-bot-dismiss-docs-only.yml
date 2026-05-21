@@ -1,0 +1,220 @@
+# ============================================================
+# Trade-Matrix-Labs · Canonical Codex Bot Dismiss (Docs-Only)
+# Version: v1.0 (2026-05-21 · LMWPF v5.3.41)
+# Companion to: codex-review-gate.yml v2.1
+#
+# PURPOSE
+# -------
+# Codex Review Gate workflow auto-bypasses docs-only PRs (10s · status check
+# passes). BUT chatgpt-codex-connector GitHub App (OpenAI's bot) independently
+# submits review COMMENTS on docs-only PRs regardless of gate bypass · creating
+# visual noise + user/CPM confusion ("Codex review 진행됨" despite "다 생략하기로 한").
+#
+# This workflow listens for pull_request_review.submitted events · checks if
+# the reviewer is chatgpt-codex-connector[bot] AND PR is docs-only · then
+# deletes the review's inline comments to remove noise.
+#
+# Cardinal Rule v2: docs-only PR Codex review COMPLETE skip · NOT just gate skip.
+# CEO 2026-05-21 directive: "다 생략하기로 한 거 아니였나" · v5.3.41 fix.
+#
+# DEPLOYMENT INSTRUCTIONS
+# -----------------------
+# 1. Copy this file to .github/workflows/codex-bot-dismiss-docs-only.yml
+# 2. Customize CODEX_GATE_REPO_TIER env (TIER_VAULT | TIER_FRAMEWORK | TIER_SUBMODULE)
+# 3. Cascade across 14 TML repos (mirror codex-review-gate.yml tier assignment)
+#
+# CUSTOMIZATION GUIDE (same as codex-review-gate.yml)
+# ---------------------------------------------------
+#   TIER_VAULT     → tm-vault
+#   TIER_FRAMEWORK → lmwpf, trade-matrix-mvp (meta)
+#   TIER_SUBMODULE → tm-ta, tm-sim, tm-eval, tm-backtest, tm-engine,
+#                    qmark, portfolio, tm-terminal, trade-matrix-website,
+#                    ta-numba, trade-matrix, TradeMatrixLabs
+# ============================================================
+
+name: Codex Bot Dismiss (Docs-Only)
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: codex-bot-dismiss-${{ github.event.pull_request.number }}-${{ github.event.review.id }}
+  cancel-in-progress: false
+
+jobs:
+  dismiss-codex-bot-docs-only:
+    name: Dismiss Codex bot review on docs-only PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    # Fast filter: only proceed if reviewer is Codex bot
+    if: github.event.review.user.login == 'chatgpt-codex-connector[bot]' || github.event.review.user.login == 'chatgpt-codex-connector'
+
+    steps:
+      - name: Detect docs-only PR and delete Codex bot review comments
+        uses: actions/github-script@v7
+        env:
+          # REPO_TYPE: Set to "TIER_VAULT" | "TIER_FRAMEWORK" | "TIER_SUBMODULE"
+          # sed-replace during deployment:  sed -i 's/TIER_SUBMODULE/TIER_SUBMODULE/' ...
+          CODEX_GATE_REPO_TIER: "TIER_SUBMODULE"
+        with:
+          github-token: ${{ secrets.CODEX_REVIEW_PAT || github.token }}
+          script: |
+            const repoTier = process.env.CODEX_GATE_REPO_TIER;
+            const pr = context.payload.pull_request;
+            const review = context.payload.review;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = pr.number;
+            const review_id = review.id;
+
+            core.notice(`Codex bot review detected on PR #${pull_number} review#${review_id}; checking docs-only status (tier=${repoTier})`);
+
+            // -------------------------------------------------------
+            // SECTION 1: Docs-only path detection (mirrors codex-review-gate.yml)
+            // -------------------------------------------------------
+            const codeExtPattern = /\.(py|rs|ts|js|tsx|jsx|mjs|cjs|rb|go|c|cpp|cc|h|hpp|kt|swift|pyx|sh|bash|zsh|fish|pl|lua|java|scala|zig|nim|v|d|f90|f95)$/i;
+
+            function isCodeFile(filename) {
+              return codeExtPattern.test(filename);
+            }
+
+            function isUniversalDocPath(filename) {
+              const allowedExact = new Set([
+                ".codex",
+                ".gitignore",
+                ".github/workflows/codex-review-gate.yml",
+                ".github/workflows/codex-bot-dismiss-docs-only.yml",
+              ]);
+              const allowedPrefixes = [
+                ".agent_state/sessions/current/",
+                ".claude/agent-memory/",
+                ".locks/",
+              ];
+              const docishExtension = /\.(css|html|json|jsonl|lock|md|txt|ya?ml)$/i;
+              const dashboardPrefix = "_dashboard/";
+
+              return (
+                allowedExact.has(filename) ||
+                allowedPrefixes.some((p) => filename.startsWith(p)) ||
+                filename.startsWith(dashboardPrefix) ||
+                docishExtension.test(filename)
+              );
+            }
+
+            function isVaultDocPath(filename) {
+              const vaultPrefixes = [".obsidian/", "_control/", "raw/", "wiki/"];
+              return (
+                filename.startsWith("_hot_") ||
+                vaultPrefixes.some((p) => filename.startsWith(p)) ||
+                isUniversalDocPath(filename)
+              );
+            }
+
+            function isFrameworkDocPath(filename) {
+              const frameworkPrefixes = [
+                ".claude/", "LMWPF/", "vault/", "plugin/",
+                "scripts/", "docs/", "tests/",
+              ];
+              const frameworkExact = new Set([
+                "CLAUDE.md", "README.md", "AGENTS.md", "CHANGELOG.md",
+              ]);
+              return (
+                frameworkExact.has(filename) ||
+                frameworkPrefixes.some((p) => filename.startsWith(p)) ||
+                isUniversalDocPath(filename)
+              );
+            }
+
+            function isSubmoduleDocPath(filename) {
+              if (isCodeFile(filename)) return false;
+              return isUniversalDocPath(filename);
+            }
+
+            function isDocsOnlyPath(filename) {
+              switch (repoTier) {
+                case "TIER_VAULT":     return isVaultDocPath(filename);
+                case "TIER_FRAMEWORK": return isFrameworkDocPath(filename);
+                case "TIER_SUBMODULE": return isSubmoduleDocPath(filename);
+                default:
+                  core.warning(`Unknown CODEX_GATE_REPO_TIER="${repoTier}"; defaulting to TIER_SUBMODULE (strict)`);
+                  return isSubmoduleDocPath(filename);
+              }
+            }
+
+            // -------------------------------------------------------
+            // SECTION 2: Get PR files + verify docs-only
+            // -------------------------------------------------------
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number, per_page: 100,
+            });
+            const filenames = files.map((f) => f.filename);
+            const blocked = filenames.filter((fn) => !isDocsOnlyPath(fn));
+
+            if (blocked.length > 0) {
+              core.notice(
+                `PR #${pull_number} NOT docs-only (tier=${repoTier}); skip dismiss. ` +
+                `Non-doc files: ${blocked.slice(0, 5).join(", ")}`
+              );
+              return;
+            }
+
+            core.notice(`PR #${pull_number} is docs-only (${filenames.length} file(s)); proceeding with Codex bot review dismissal`);
+
+            // -------------------------------------------------------
+            // SECTION 3: Delete Codex bot review's inline comments
+            // -------------------------------------------------------
+            // Note: COMMENTED reviews cannot be dismissed via dismissReview API
+            // (only APPROVED / CHANGES_REQUESTED). We delete the inline review
+            // comments individually · the review header remains but content is gone.
+            const reviewComments = await github.paginate(github.rest.pulls.listReviewComments, {
+              owner, repo, pull_number, per_page: 100,
+            });
+
+            const codexComments = reviewComments.filter((c) =>
+              c.pull_request_review_id === review_id &&
+              (c.user?.login === 'chatgpt-codex-connector[bot]' ||
+               c.user?.login === 'chatgpt-codex-connector')
+            );
+
+            core.notice(`Found ${codexComments.length} Codex bot review comment(s) to delete`);
+
+            let deletedCount = 0;
+            for (const comment of codexComments) {
+              try {
+                await github.rest.pulls.deleteReviewComment({
+                  owner, repo, comment_id: comment.id,
+                });
+                deletedCount++;
+                core.notice(`Deleted review comment #${comment.id} on ${comment.path}:L${comment.original_line || comment.line || '?'}`);
+              } catch (err) {
+                core.warning(`Failed to delete review comment #${comment.id}: ${err.message}`);
+              }
+            }
+
+            // -------------------------------------------------------
+            // SECTION 4: Post audit trail comment
+            // -------------------------------------------------------
+            const auditMsg =
+              `### 🤖 Codex bot review auto-dismissed (LMWPF v5.3.41 · docs-only PR)\n\n` +
+              `**Reason**: This PR contains only documentation files (tier: \`${repoTier}\`). ` +
+              `Per CEO 2026-05-21 directive: docs-only PRs skip Codex review entirely · NOT just Codex Review Gate workflow.\n\n` +
+              `**Action**: Deleted ${deletedCount} inline review comment(s) from review#${review_id} by ${review.user.login}.\n\n` +
+              `**Files**: ${filenames.slice(0, 10).join(", ")}${filenames.length > 10 ? ` (+${filenames.length - 10} more)` : ""}\n\n` +
+              `**Canon**: \`vault/raw/decisions/2026-05-21_v5341_codex_bot_dismiss_docs_only_canonical.md\`\n` +
+              `<sub>Generated by Codex Bot Dismiss workflow · LMWPF v5.3.41+</sub>`;
+
+            try {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: pull_number, body: auditMsg,
+              });
+              core.notice(`Posted audit trail comment to PR #${pull_number}`);
+            } catch (err) {
+              core.warning(`Failed to post audit comment: ${err.message}`);
+            }
+
+            core.notice(`✅ Codex bot dismissal complete · ${deletedCount} comment(s) deleted from PR #${pull_number}`);
