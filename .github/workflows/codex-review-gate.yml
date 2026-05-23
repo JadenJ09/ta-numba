@@ -1,6 +1,6 @@
 # ============================================================
 # Trade-Matrix-Labs · Canonical Codex Review Gate Workflow
-# Version: v2.1 (2026-05-21)
+# Version: v2.3 (2026-05-23 · retry-on-401 + TIER_FRAMEWORK bare submodule pointer bypass)
 # Source: JadenJ09/tm-vault · backport + docs-only bypass added
 #
 # DEPLOYMENT INSTRUCTIONS
@@ -177,6 +177,24 @@ jobs:
               return codeExtPattern.test(filename);
             }
 
+            // v2.3: Retry-on-401 wrapper for transient GitHub API auth hiccups
+            // Origin: TML PR #73 Codex Gate FAIL 2026-05-23T15:36 (401 Bad credentials transient · post-rerun PASS)
+            async function withRetry401(fn, maxAttempts = 3, backoffMs = 5000) {
+              for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                  return await fn();
+                } catch (e) {
+                  const isTransient401 = e.status === 401 && attempt < maxAttempts;
+                  if (isTransient401) {
+                    core.warning(`Transient 401 on attempt ${attempt}/${maxAttempts} · retrying in ${backoffMs}ms · url=${e.request?.url || 'unknown'}`);
+                    await new Promise(r => setTimeout(r, backoffMs));
+                    continue;
+                  }
+                  throw e;
+                }
+              }
+            }
+
             // TIER_VAULT: vault repo allowlist (reference baseline)
             // Matches tm-vault deployed logic exactly.
             function isVaultDocPath(filename) {
@@ -265,12 +283,12 @@ jobs:
             // SECTION 4: Docs-only bypass attempt
             // -------------------------------------------------------
             async function maybeBypassDocsOnly() {
-              const files = await github.paginate(github.rest.pulls.listFiles, {
+              const files = await withRetry401(() => github.paginate(github.rest.pulls.listFiles, {
                 owner,
                 repo,
                 pull_number,
                 per_page: 100,
-              });
+              }));
               const filenames = files.map((f) => f.filename);
               const blocked = filenames.filter((fn) => !isDocsOnlyPath(fn));
 
@@ -327,12 +345,12 @@ jobs:
             }
 
             async function listIssueComments() {
-              return await github.paginate(github.rest.issues.listComments, {
+              return await withRetry401(() => github.paginate(github.rest.issues.listComments, {
                 owner,
                 repo,
                 issue_number: pull_number,
                 per_page: 100,
-              });
+              }));
             }
 
             async function findExistingCodexReviewRequest() {
@@ -345,12 +363,12 @@ jobs:
 
             async function findCodexSignal() {
               // Signal type 1: formal PR review from Codex bot
-              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              const reviews = await withRetry401(() => github.paginate(github.rest.pulls.listReviews, {
                 owner,
                 repo,
                 pull_number,
                 per_page: 100,
-              });
+              }));
               const review = reviews
                 .filter((item) => isCodexBot(item))
                 .filter(
@@ -376,12 +394,12 @@ jobs:
               }
 
               // Signal type 3: +1 reaction from Codex bot (approval shorthand)
-              const reactions = await github.paginate(github.rest.reactions.listForIssue, {
+              const reactions = await withRetry401(() => github.paginate(github.rest.reactions.listForIssue, {
                 owner,
                 repo,
                 issue_number: pull_number,
                 per_page: 100,
-              });
+              }));
               const reaction = reactions
                 .filter((item) => isCodexBot(item))
                 .filter((item) => item.content === "+1")
@@ -473,3 +491,4 @@ jobs:
                 `Confirm Codex code review is enabled for this repo, ` +
                 `or comment "@codex review" to manually re-trigger.`,
             );
+
