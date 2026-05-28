@@ -1,7 +1,16 @@
 # ============================================================
 # Trade-Matrix-Labs · Canonical Codex Review Gate Workflow
-# Version: v2.3 (2026-05-23 · retry-on-401 + TIER_FRAMEWORK bare submodule pointer bypass)
+# Version: v2.4 (2026-05-28 · withRetry401 extended to listComments + all read-path + status-write github.rest.* + wait/timeout tuning for TIER_SUBMODULE Codex landing latency)
 # Source: JadenJ09/tm-vault · backport + docs-only bypass added
+# v2.4 changes (main CPM 2026-05-28 · transient-401 false-negative fix):
+#   - withRetry401 wrapper EXTENDED to the remaining unwrapped github.rest.*
+#             calls: pulls.get, repos.getCommit, and all three
+#             repos.createCommitStatus writes. (Read-path paginate calls
+#             listFiles/listComments/listReviews/reactions already wrapped.)
+#             A 401 on a success-status write reproduced the false-negative.
+#   - Wait/timeout tuning: INITIAL_WAIT 300→420s, RECOVERY_WAIT 300→360s,
+#             timeout-minutes 12→16 (420+360=780s > 720s) for TIER_SUBMODULE
+#             Codex landing latency.
 #
 # DEPLOYMENT INSTRUCTIONS
 # ----------------------
@@ -50,16 +59,18 @@ jobs:
   codex-review-gate:
     name: Codex Review Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 16
 
     steps:
       - name: Require Codex review on current PR head
         uses: actions/github-script@v7
         env:
           # Phase 1: wait before posting recovery @codex review comment
-          CODEX_REVIEW_INITIAL_WAIT_SECONDS: "300"
+          # v2.4: 300→420 for TIER_SUBMODULE Codex landing latency
+          CODEX_REVIEW_INITIAL_WAIT_SECONDS: "420"
           # Phase 2: wait after posting recovery comment
-          CODEX_REVIEW_RECOVERY_WAIT_SECONDS: "300"
+          # v2.4: 300→360 (420+360=780s < 16min timeout)
+          CODEX_REVIEW_RECOVERY_WAIT_SECONDS: "360"
           CODEX_REVIEW_POLL_SECONDS: "15"
           # REPO_TYPE: Set to "TIER_VAULT" | "TIER_FRAMEWORK" | "TIER_SUBMODULE"
           # sed-replace during deployment:  sed -i 's/TIER_SUBMODULE/TIER_SUBMODULE/' ...
@@ -78,11 +89,13 @@ jobs:
                 core.notice("Ignoring non-PR comment or comment without @codex review.");
                 return;
               }
-              const response = await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: issue.number,
-              });
+              const response = await withRetry401(() =>
+                github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: issue.number,
+                })
+              );
               pr = response.data;
             }
 
@@ -116,11 +129,13 @@ jobs:
             ]);
             const codexBodyPattern = /Codex Review|major issues|automated review suggestions/i;
 
-            const headCommit = await github.rest.repos.getCommit({
-              owner: headRepoOwner,
-              repo: headRepoName,
-              ref: headSha,
-            });
+            const headCommit = await withRetry401(() =>
+              github.rest.repos.getCommit({
+                owner: headRepoOwner,
+                repo: headRepoName,
+                ref: headSha,
+              })
+            );
             const headCommitTime = new Date(
               headCommit.data.commit.committer?.date ||
                 headCommit.data.commit.author?.date ||
@@ -304,15 +319,17 @@ jobs:
                 `Docs-only Codex bypass accepted (${repoTier}); ` +
                   `${filenames.length} file(s) all match allowlist.`,
               );
-              await github.rest.repos.createCommitStatus({
-                owner,
-                repo,
-                sha: headSha,
-                state: "success",
-                context: "Codex Review Gate",
-                description: `Docs-only bypass (${repoTier})`,
-                target_url: pr.html_url,
-              });
+              await withRetry401(() =>
+                github.rest.repos.createCommitStatus({
+                  owner,
+                  repo,
+                  sha: headSha,
+                  state: "success",
+                  context: "Codex Review Gate",
+                  description: `Docs-only bypass (${repoTier})`,
+                  target_url: pr.html_url,
+                })
+              );
               return true;
             }
 
@@ -333,15 +350,17 @@ jobs:
 
             async function createSuccessStatus(signal) {
               core.notice(signal);
-              await github.rest.repos.createCommitStatus({
-                owner,
-                repo,
-                sha: headSha,
-                state: "success",
-                context: "Codex Review Gate",
-                description: "Codex review verified for current PR head",
-                target_url: pr.html_url,
-              });
+              await withRetry401(() =>
+                github.rest.repos.createCommitStatus({
+                  owner,
+                  repo,
+                  sha: headSha,
+                  state: "success",
+                  context: "Codex Review Gate",
+                  description: "Codex review verified for current PR head",
+                  target_url: pr.html_url,
+                })
+              );
             }
 
             async function listIssueComments() {
@@ -476,15 +495,17 @@ jobs:
 
             // Final failure
             const totalWaitSeconds = initialWaitSeconds + recoveryWaitSeconds;
-            await github.rest.repos.createCommitStatus({
-              owner,
-              repo,
-              sha: headSha,
-              state: "failure",
-              context: "Codex Review Gate",
-              description: `No Codex review found after recovery (${repoTier})`,
-              target_url: pr.html_url,
-            });
+            await withRetry401(() =>
+              github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: headSha,
+                state: "failure",
+                context: "Codex Review Gate",
+                description: `No Codex review found after recovery (${repoTier})`,
+                target_url: pr.html_url,
+              })
+            );
             core.setFailed(
               `No Codex review/comment/reaction found for PR #${pull_number} head ${headSha} ` +
                 `after ${totalWaitSeconds}s including one @codex review recovery request. ` +
